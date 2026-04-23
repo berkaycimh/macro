@@ -39,7 +39,7 @@ global versionUrl   := "https://api.github.com/repos/berkaycimh/macro/contents/v
 global ghToken      := "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"
 
 ; Versiyon
-global currentVersion := "1.0.1"
+global currentVersion := "1.0.0"
 
 ; Şifre ekranı kaldırıldı
 
@@ -92,7 +92,22 @@ try {
     whr.SetRequestHeader("User-Agent", "AutoHotkey")
     whr.SetRequestHeader("Accept", "application/vnd.github.v3.raw")
     whr.Send()
-    remoteCode := whr.ResponseText
+    whr.Send()
+    ; JSON'dan download_url çek
+    jsonResp := whr.ResponseText
+    dlUrl := ""
+    if RegExMatch(jsonResp, '"download_url"\s*:\s*"([^"]+)"', &dm)
+        dlUrl := dm[1]
+    ; download_url'den raw içeriği çek
+    remoteCode := ""
+    if (dlUrl != "") {
+        whr2 := ComObject("WinHttp.WinHttpRequest.5.1")
+        whr2.Open("GET", dlUrl, false)
+        whr2.SetRequestHeader("Authorization", "token " ghToken)
+        whr2.SetRequestHeader("User-Agent", "AutoHotkey")
+        whr2.Send()
+        remoteCode := whr2.ResponseText
+    }
     ; Debug — ilk 80 karakteri göster
     splashStatus.SetFont("cffcc00")
     splashStatus.Value := SubStr(remoteCode, 1, 80)
