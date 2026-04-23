@@ -37,7 +37,7 @@ global ramLabel  := ""
 global updateUrl := "https://raw.githubusercontent.com/berkaycimh/macro/main/macro.ahk"
 
 ; Versiyon
-global currentVersion := "1.0.1"
+global currentVersion := "1.2"
 
 ; Şifre ekranı kaldırıldı
 
@@ -143,7 +143,7 @@ G.Add("Text", "x334 y0 w1 h44 Background222222")
 G.SetFont("s12 w700 c555555", "Consolas")
 minBtn   := G.Add("Text", "x335 y0 w36 h44 Background0a0a0a Center +0x200", "─")
 closeBtn := G.Add("Text", "x373 y0 w27 h44 Background0a0a0a Center +0x200", "×")
-minBtn.OnEvent("Click",    (*) => G.Minimize())
+minBtn.OnEvent("Click",    (*) => G.Hide())
 closeBtn.OnEvent("Click",  (*) => ExitApp())
 
 ; Çizgiyi WM_PAINT ile her zaman yeniden çiz — hiçbir kontrol silemez
