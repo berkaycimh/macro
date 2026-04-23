@@ -91,7 +91,20 @@ try {
     whr.SetRequestHeader("User-Agent", "AutoHotkey")
     whr.SetRequestHeader("Accept", "application/vnd.github.v3.raw")
     whr.Send()
-    latestVer := Trim(whr.ResponseText)
+    ; GitHub API JSON döndürüyor, content alanını base64 decode et
+    jsonResp := whr.ResponseText
+    ; "content" alanını çek
+    RegExMatch(jsonResp, '"content"\s*:\s*"([^"]+)"', &m)
+    b64 := StrReplace(m[1], "\n", "")
+    b64 := StrReplace(b64, "`n", "")
+    ; Base64 decode
+    latestVer := ""
+    if (b64 != "") {
+        bin := Buffer(StrLen(b64))
+        binLen := 0
+        DllCall("crypt32\CryptStringToBinary", "str", b64, "uint", 0, "uint", 1, "ptr", bin, "uint*", &binLen, "ptr", 0, "ptr", 0)
+        latestVer := Trim(StrGet(bin, binLen, "UTF-8"))
+    }
     if (latestVer != "" && RegExMatch(latestVer, "^\d+\.\d+\.\d+$") && latestVer != currentVersion) {
         splashStatus.SetFont("cffcc00")
         splashStatus.Value := "↓ Yeni versiyon bulundu: " latestVer
@@ -103,7 +116,18 @@ try {
         whr2.SetRequestHeader("User-Agent", "AutoHotkey")
         whr2.SetRequestHeader("Accept", "application/vnd.github.v3.raw")
         whr2.Send()
-        newCode := whr2.ResponseText
+        ; JSON'dan base64 içeriği çek ve decode et
+        jsonResp2 := whr2.ResponseText
+        RegExMatch(jsonResp2, '"content"\s*:\s*"([^"]+)"', &m2)
+        b64_2 := StrReplace(m2[1], "\n", "")
+        b64_2 := StrReplace(b64_2, "`n", "")
+        newCode := ""
+        if (b64_2 != "") {
+            bin2 := Buffer(StrLen(b64_2))
+            binLen2 := 0
+            DllCall("crypt32\CryptStringToBinary", "str", b64_2, "uint", 0, "uint", 1, "ptr", bin2, "uint*", &binLen2, "ptr", 0, "ptr", 0)
+            newCode := StrGet(bin2, binLen2, "UTF-8")
+        }
         if (StrLen(newCode) > 100) {
             splashStatus.Value := "Yükleniyor, yeniden başlatılıyor..."
             Sleep(1000)
