@@ -36,10 +36,10 @@ global ramLabel  := ""
 ; ─── Otomatik Güncelleme ───────────────────────────────────────────────────
 global updateUrl    := "https://api.github.com/repos/berkaycimh/macro/contents/macro.ahk"
 global versionUrl   := "https://api.github.com/repos/berkaycimh/macro/contents/version.txt"
-global ghToken      := "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"
+global ghToken      := ""
 
 ; Versiyon
-global currentVersion := "1.0.1"
+global currentVersion := "1.0.0"
 
 ; Şifre ekranı kaldırıldı
 
