@@ -443,7 +443,7 @@ ApplyRecoil() {
 ; ─── Otomatik Güncelleme ───────────────────────────────────────────────────
 global updateUrl    := "https://raw.githubusercontent.com/berkaycimh/macro/main/macro.ahk"
 global versionUrl   := "https://raw.githubusercontent.com/berkaycimh/macro/main/version.txt"
-global ghToken      := "ghp_BURAYA_TOKENINI_YAZ"
+global ghToken      := "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"
 
 CheckVersion() {
     global verLabel, currentVersion, updateUrl, versionUrl, ghToken
