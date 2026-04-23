@@ -34,9 +34,7 @@ global motoLabel := ""
 global ramLabel  := ""
 
 ; ─── Otomatik Güncelleme ───────────────────────────────────────────────────
-global updateUrl    := "https://api.github.com/repos/berkaycimh/macro/contents/macro.ahk"
-global versionUrl   := "https://api.github.com/repos/berkaycimh/macro/contents/version.txt"
-global ghToken      := ""
+global updateUrl := "https://raw.githubusercontent.com/berkaycimh/macro/main/macro.ahk"
 
 ; Versiyon
 global currentVersion := "1.0.0"
@@ -85,39 +83,16 @@ splashStatus.Value := "Sunucuya bağlanılıyor..."
 Sleep(500)
 
 try {
-    ; macro.ahk'yı GitHub API ile çek
+    ; macro.ahk'yı raw olarak çek
     whr := ComObject("WinHttp.WinHttpRequest.5.1")
     whr.Open("GET", updateUrl, false)
-    whr.SetRequestHeader("Authorization", "token " ghToken)
     whr.SetRequestHeader("User-Agent", "AutoHotkey")
-    whr.SetRequestHeader("Accept", "application/vnd.github.v3.raw")
     whr.Send()
-    whr.Send()
-    ; JSON'dan download_url çek
-    jsonResp := whr.ResponseText
-    dlUrl := ""
-    if RegExMatch(jsonResp, '"download_url"\s*:\s*"([^"]+)"', &dm)
-        dlUrl := dm[1]
-    ; download_url'den raw içeriği çek
-    remoteCode := ""
-    if (dlUrl != "") {
-        whr2 := ComObject("WinHttp.WinHttpRequest.5.1")
-        whr2.Open("GET", dlUrl, false)
-        whr2.SetRequestHeader("Authorization", "token " ghToken)
-        whr2.SetRequestHeader("User-Agent", "AutoHotkey")
-        whr2.Send()
-        remoteCode := whr2.ResponseText
-    }
-    ; Debug — ilk 80 karakteri göster
-    splashStatus.SetFont("cffcc00")
-    splashStatus.Value := SubStr(remoteCode, 1, 80)
-    Sleep(4000)
+    remoteCode := whr.ResponseText
     ; currentVersion satırını çek
     latestVer := ""
     if RegExMatch(remoteCode, 'currentVersion\s*:=\s*"([^"]+)"', &vm)
         latestVer := vm[1]
-    splashStatus.Value := "Uzak ver: '" latestVer "' / Yerel: '" currentVersion "'"
-    Sleep(2000)
     if (latestVer != "" && latestVer != currentVersion) {
         splashStatus.SetFont("cffcc00")
         splashStatus.Value := "↓ Yeni versiyon: " latestVer " indiriliyor..."
@@ -532,93 +507,13 @@ ApplyRecoil() {
     }
 }
 
-; ─── Otomatik Güncelleme ─── (değişkenler dosya başında tanımlandı)
+; ─── Otomatik Güncelleme ─── (splash kodu dosya başında çalışıyor)
 
 CheckVersion() {
-    global verLabel, currentVersion, updateUrl, versionUrl, ghToken
-
-    ; Güncelleme kontrol ekranı
-    splashGui := Gui("+AlwaysOnTop -Caption +ToolWindow", "")
-    splashGui.BackColor := "0e0e0e"
-    splashGui.SetFont("s9 w700 c00ff88", "Consolas")
-    splashGui.Add("Text", "x0 y0 w260 h1 Background00ff88")
-    splashGui.SetFont("s8 w600 ccccccc", "Consolas")
-    splashGui.Add("Text", "x20 y16 w220 Background0e0e0e", "Güncelleme kontrol ediliyor...")
-    splashGui.SetFont("s7 c555555", "Consolas")
-    splashGui.Add("Text", "x20 y32 w220 Background0e0e0e", "GitHub bağlantısı kuruluyor")
-    splashGui.Add("Text", "x0 y50 w260 h1 Background1a1a1a")
-    splashGui.SetFont("s7 c333333", "Consolas")
-    splashGui.Add("Text", "x0 y54 w260 h16 Background0a0a0a Center", "berkaycimh  •  v" currentVersion)
-    screenW := SysGet(0)
-    screenH := SysGet(1)
-    splashGui.Show("w260 h72 x" (screenW-260)//2 " y" (screenH-72)//2 " NoActivate")
-    DllCall("dwmapi\DwmSetWindowAttribute", "ptr", splashGui.Hwnd, "uint", 33, "int*", 2, "uint", 4)
-    DllCall("dwmapi\DwmSetWindowAttribute", "ptr", splashGui.Hwnd, "uint", 34, "int*", 0x0e0e0e, "uint", 4)
-
-    try {
-        whr := ComObject("WinHttp.WinHttpRequest.5.1")
-        whr.Open("GET", versionUrl, false)
-        whr.SetRequestHeader("Authorization", "token " ghToken)
-        whr.SetRequestHeader("User-Agent", "AutoHotkey")
-        whr.SetRequestHeader("Accept", "application/vnd.github.v3.raw")
-        whr.Send()
-        latestVer := Trim(whr.ResponseText)
-        if (latestVer = "" || !RegExMatch(latestVer, "^\d+\.\d+\.\d+$")) {
-            splashGui.Destroy()
-            if IsObject(verLabel) {
-                verLabel.SetFont("c555555")
-                verLabel.Value := "v" currentVersion
-            }
-            return
-        }
-        if (latestVer != currentVersion) {
-            ; Splash'i güncelle
-            splashGui.Destroy()
-            splashGui2 := Gui("+AlwaysOnTop -Caption +ToolWindow", "")
-            splashGui2.BackColor := "0e0e0e"
-            splashGui2.Add("Text", "x0 y0 w260 h1 Backgroundffcc00")
-            splashGui2.SetFont("s8 w700 cffcc00", "Consolas")
-            splashGui2.Add("Text", "x20 y16 w220 Background0e0e0e", "↓ Yeni versiyon: " latestVer)
-            splashGui2.SetFont("s7 c555555", "Consolas")
-            splashGui2.Add("Text", "x20 y32 w220 Background0e0e0e", "İndiriliyor, lütfen bekleyin...")
-            splashGui2.Add("Text", "x0 y50 w260 h1 Background1a1a1a")
-            splashGui2.SetFont("s7 c333333", "Consolas")
-            splashGui2.Add("Text", "x0 y54 w260 h16 Background0a0a0a Center", "berkaycimh  •  v" currentVersion " → v" latestVer)
-            splashGui2.Show("w260 h72 x" (screenW-260)//2 " y" (screenH-72)//2 " NoActivate")
-            DllCall("dwmapi\DwmSetWindowAttribute", "ptr", splashGui2.Hwnd, "uint", 33, "int*", 2, "uint", 4)
-
-            whr2 := ComObject("WinHttp.WinHttpRequest.5.1")
-            whr2.Open("GET", updateUrl, false)
-            whr2.SetRequestHeader("Authorization", "token " ghToken)
-            whr2.SetRequestHeader("User-Agent", "AutoHotkey")
-            whr2.SetRequestHeader("Accept", "application/vnd.github.v3.raw")
-            whr2.Send()
-            newCode := whr2.ResponseText
-            if (StrLen(newCode) < 100) {
-                splashGui2.Destroy()
-                return
-            }
-            try FileCopy(A_ScriptFullPath, A_ScriptDir "\macro_backup.ahk", 1)
-            fh := FileOpen(A_ScriptFullPath, "w", "UTF-8-RAW")
-            fh.Write(newCode)
-            fh.Close()
-            Sleep(500)
-            splashGui2.Destroy()
-            Run('"' A_AhkPath '" "' A_ScriptFullPath '"')
-            ExitApp()
-        } else {
-            splashGui.Destroy()
-            if IsObject(verLabel) {
-                verLabel.SetFont("c00ff88")
-                verLabel.Value := "✔ v" currentVersion
-            }
-        }
-    } catch as e {
-        splashGui.Destroy()
-        if IsObject(verLabel) {
-            verLabel.SetFont("c555555")
-            verLabel.Value := "v" currentVersion
-        }
+    global verLabel, currentVersion
+    if IsObject(verLabel) {
+        verLabel.SetFont("c00ff88")
+        verLabel.Value := "✔ v" currentVersion
     }
 }
 
