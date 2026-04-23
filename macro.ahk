@@ -39,7 +39,7 @@ global versionUrl   := "https://api.github.com/repos/berkaycimh/macro/contents/v
 global ghToken      := "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"
 
 ; Versiyon
-global currentVersion := "1.0.1"
+global currentVersion := "1.0.0"
 
 ; Şifre ekranı kaldırıldı
 
@@ -93,10 +93,10 @@ try {
     whr.SetRequestHeader("Accept", "application/vnd.github.v3.raw")
     whr.Send()
     remoteCode := whr.ResponseText
-    ; Debug
+    ; Debug — ilk 80 karakteri göster
     splashStatus.SetFont("cffcc00")
-    splashStatus.Value := "Kod uzunluğu: " StrLen(remoteCode) " kar"
-    Sleep(2000)
+    splashStatus.Value := SubStr(remoteCode, 1, 80)
+    Sleep(4000)
     ; currentVersion satırını çek
     latestVer := ""
     if RegExMatch(remoteCode, 'currentVersion\s*:=\s*"([^"]+)"', &vm)
