@@ -37,7 +37,7 @@ global ramLabel  := ""
 global updateUrl := "https://raw.githubusercontent.com/berkaycimh/macro/main/macro.ahk"
 
 ; Versiyon
-global currentVersion := "1.0.0"
+global currentVersion := "1.0.1"
 
 ; Şifre ekranı kaldırıldı
 
@@ -133,7 +133,7 @@ G.SetFont("s7 w700 c00ff88", "Consolas")
 G.Add("Text", "x14 y14 w28 h16 Background003322 Center", "SYS")
 G.SetFont("s10 w800 cFFFFFF", "Consolas")
 G.Add("Text", "x48 y8 w200 Background0a0a0a", "405-B / 406-X")
-G.Add("Text", "x48 y24 w200 Background0a0a0a", "RECOIL CONTROL")
+G.Add("Text", "x48 y24 w200 Background0a0a0a", "Sorunsuz")
 G.Add("Text", "x260 y0 w1 h44 Background222222")
 G.SetFont("s6 ccccccc", "Consolas")
 G.Add("Text", "x262 y6 w76 h14 Background0a0a0a Center", "UPTIME")
