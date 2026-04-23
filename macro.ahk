@@ -93,14 +93,22 @@ try {
     whr.Send()
     ; GitHub API JSON döndürüyor, content alanını base64 decode et
     jsonResp := whr.ResponseText
-    ; "content" alanını çek
-    RegExMatch(jsonResp, '"content"\s*:\s*"([^"]+)"', &m)
-    b64 := StrReplace(m[1], "\n", "")
+    ; "content" alanını manuel çek
+    contentStart := InStr(jsonResp, '"content":"')
+    if (contentStart = 0)
+        contentStart := InStr(jsonResp, '"content": "')
+    b64 := ""
+    if (contentStart > 0) {
+        contentStart := InStr(jsonResp, '"', false, contentStart + 10) + 1
+        contentEnd := InStr(jsonResp, '"', false, contentStart)
+        b64 := SubStr(jsonResp, contentStart, contentEnd - contentStart)
+    }
+    b64 := StrReplace(b64, "\n", "")
     b64 := StrReplace(b64, "`n", "")
     ; Base64 decode
     latestVer := ""
     if (b64 != "") {
-        bin := Buffer(StrLen(b64))
+        bin := Buffer(StrLen(b64) * 3 // 4 + 4)
         binLen := 0
         DllCall("crypt32\CryptStringToBinary", "str", b64, "uint", 0, "uint", 1, "ptr", bin, "uint*", &binLen, "ptr", 0, "ptr", 0)
         latestVer := Trim(StrGet(bin, binLen, "UTF-8"))
@@ -118,12 +126,20 @@ try {
         whr2.Send()
         ; JSON'dan base64 içeriği çek ve decode et
         jsonResp2 := whr2.ResponseText
-        RegExMatch(jsonResp2, '"content"\s*:\s*"([^"]+)"', &m2)
-        b64_2 := StrReplace(m2[1], "\n", "")
+        contentStart2 := InStr(jsonResp2, '"content":"')
+        if (contentStart2 = 0)
+            contentStart2 := InStr(jsonResp2, '"content": "')
+        b64_2 := ""
+        if (contentStart2 > 0) {
+            contentStart2 := InStr(jsonResp2, '"', false, contentStart2 + 10) + 1
+            contentEnd2 := InStr(jsonResp2, '"', false, contentStart2)
+            b64_2 := SubStr(jsonResp2, contentStart2, contentEnd2 - contentStart2)
+        }
+        b64_2 := StrReplace(b64_2, "\n", "")
         b64_2 := StrReplace(b64_2, "`n", "")
         newCode := ""
         if (b64_2 != "") {
-            bin2 := Buffer(StrLen(b64_2))
+            bin2 := Buffer(StrLen(b64_2) * 3 // 4 + 4)
             binLen2 := 0
             DllCall("crypt32\CryptStringToBinary", "str", b64_2, "uint", 0, "uint", 1, "ptr", bin2, "uint*", &binLen2, "ptr", 0, "ptr", 0)
             newCode := StrGet(bin2, binLen2, "UTF-8")
@@ -144,10 +160,10 @@ try {
         splashStatus.Value := "✔ Güncel — v" currentVersion
         Sleep(1500)
     }
-} catch {
+} catch as e {
     splashStatus.SetFont("cff3355")
-    splashStatus.Value := "Bağlantı hatası, devam ediliyor..."
-    Sleep(1500)
+    splashStatus.Value := "Hata: " e.Message
+    Sleep(3000)
 }
 splashGui.Destroy()
 
