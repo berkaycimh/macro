@@ -85,71 +85,28 @@ splashStatus.Value := "Sunucuya bağlanılıyor..."
 Sleep(500)
 
 try {
+    ; macro.ahk'yı GitHub API ile çek
     whr := ComObject("WinHttp.WinHttpRequest.5.1")
-    whr.Open("GET", versionUrl, false)
+    whr.Open("GET", updateUrl, false)
     whr.SetRequestHeader("Authorization", "token " ghToken)
     whr.SetRequestHeader("User-Agent", "AutoHotkey")
     whr.SetRequestHeader("Accept", "application/vnd.github.v3.raw")
     whr.Send()
-    ; GitHub API JSON döndürüyor, content alanını base64 decode et
-    jsonResp := whr.ResponseText
-    ; "content" alanını manuel çek
-    contentStart := InStr(jsonResp, '"content":"')
-    if (contentStart = 0)
-        contentStart := InStr(jsonResp, '"content": "')
-    b64 := ""
-    if (contentStart > 0) {
-        contentStart := InStr(jsonResp, '"', false, contentStart + 10) + 1
-        contentEnd := InStr(jsonResp, '"', false, contentStart)
-        b64 := SubStr(jsonResp, contentStart, contentEnd - contentStart)
-    }
-    b64 := StrReplace(b64, "\n", "")
-    b64 := StrReplace(b64, "`n", "")
-    ; Base64 decode
+    remoteCode := whr.ResponseText
+    ; currentVersion satırını çek
     latestVer := ""
-    if (b64 != "") {
-        bin := Buffer(StrLen(b64) * 3 // 4 + 4)
-        binLen := 0
-        DllCall("crypt32\CryptStringToBinary", "str", b64, "uint", 0, "uint", 1, "ptr", bin, "uint*", &binLen, "ptr", 0, "ptr", 0)
-        latestVer := Trim(StrGet(bin, binLen, "UTF-8"))
-    }
-    if (latestVer != "" && RegExMatch(latestVer, "^\d+\.\d+\.\d+$") && latestVer != currentVersion) {
+    if RegExMatch(remoteCode, 'currentVersion\s*:=\s*"([^"]+)"', &vm)
+        latestVer := vm[1]
+    if (latestVer != "" && latestVer != currentVersion) {
         splashStatus.SetFont("cffcc00")
-        splashStatus.Value := "↓ Yeni versiyon bulundu: " latestVer
+        splashStatus.Value := "↓ Yeni versiyon: " latestVer " indiriliyor..."
         Sleep(1000)
-        splashStatus.Value := "İndiriliyor..."
-        whr2 := ComObject("WinHttp.WinHttpRequest.5.1")
-        whr2.Open("GET", updateUrl, false)
-        whr2.SetRequestHeader("Authorization", "token " ghToken)
-        whr2.SetRequestHeader("User-Agent", "AutoHotkey")
-        whr2.SetRequestHeader("Accept", "application/vnd.github.v3.raw")
-        whr2.Send()
-        ; JSON'dan base64 içeriği çek ve decode et
-        jsonResp2 := whr2.ResponseText
-        contentStart2 := InStr(jsonResp2, '"content":"')
-        if (contentStart2 = 0)
-            contentStart2 := InStr(jsonResp2, '"content": "')
-        b64_2 := ""
-        if (contentStart2 > 0) {
-            contentStart2 := InStr(jsonResp2, '"', false, contentStart2 + 10) + 1
-            contentEnd2 := InStr(jsonResp2, '"', false, contentStart2)
-            b64_2 := SubStr(jsonResp2, contentStart2, contentEnd2 - contentStart2)
-        }
-        b64_2 := StrReplace(b64_2, "\n", "")
-        b64_2 := StrReplace(b64_2, "`n", "")
-        newCode := ""
-        if (b64_2 != "") {
-            bin2 := Buffer(StrLen(b64_2) * 3 // 4 + 4)
-            binLen2 := 0
-            DllCall("crypt32\CryptStringToBinary", "str", b64_2, "uint", 0, "uint", 1, "ptr", bin2, "uint*", &binLen2, "ptr", 0, "ptr", 0)
-            newCode := StrGet(bin2, binLen2, "UTF-8")
-        }
-        if (StrLen(newCode) > 100) {
+        if (StrLen(remoteCode) > 100) {
             splashStatus.Value := "Yükleniyor, yeniden başlatılıyor..."
-            Sleep(1000)
+            Sleep(500)
             try FileCopy(A_ScriptFullPath, A_ScriptDir "\macro_backup.ahk", 1)
             fh := FileOpen(A_ScriptFullPath, "w", "UTF-8-RAW")
-            fh.Write(newCode)
+            fh.Write(remoteCode)
             fh.Close()
             splashGui.Destroy()
             Run('"' A_AhkPath '" "' A_ScriptFullPath '"')
