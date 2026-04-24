@@ -38,7 +38,7 @@ global ramLabel  := ""
 
 ; ─── Otomatik Güncelleme ───────────────────────────────────────────────────
 global updateApiUrl := "https://api.github.com/repos/berkaycimh/macro/releases/latest"
-global updateExeUrl := "https://github.com/berkaycimh/macro/releases/latest/download/macro.exe"
+global updateExeUrl := "https://github.com/berkaycimh/macro/releases/latest/download/PSP.exe"
 
 ; Versiyon — bu değer her zaman derlenen exe ile eşleşmeli
 global currentVersion := "1.5"
