@@ -37,7 +37,8 @@ global motoLabel := ""
 global ramLabel  := ""
 
 ; ─── Otomatik Güncelleme ───────────────────────────────────────────────────
-global updateUrl := "https://raw.githubusercontent.com/berkaycimh/macro/main/macro.ahk"
+global updateUrl    := "https://raw.githubusercontent.com/berkaycimh/macro/main/macro.ahk"
+global updateExeUrl := "https://github.com/berkaycimh/macro/releases/latest/download/macro.exe"
 
 ; Versiyon
 global currentVersion := "1.3"
@@ -86,30 +87,69 @@ splashStatus.Value := "Sunucuya bağlanılıyor..."
 Sleep(500)
 
 try {
-    ; macro.ahk'yı raw olarak çek
+    ; macro.ahk'ı raw olarak çek, içindeki currentVersion'ı parse et
     whr := ComObject("WinHttp.WinHttpRequest.5.1")
     whr.Open("GET", updateUrl, false)
     whr.SetRequestHeader("User-Agent", "AutoHotkey")
     whr.Send()
     remoteCode := whr.ResponseText
-    ; currentVersion satırını çek
+
     latestVer := ""
     if RegExMatch(remoteCode, 'currentVersion\s*:=\s*"([^"]+)"', &vm)
         latestVer := vm[1]
+
     if (latestVer != "" && latestVer != currentVersion) {
         splashStatus.SetFont("cffcc00")
-        splashStatus.Value := "↓ Yeni versiyon: " latestVer " indiriliyor..."
-        Sleep(1000)
-        if (StrLen(remoteCode) > 100) {
-            splashStatus.Value := "Yükleniyor, yeniden başlatılıyor..."
-            Sleep(500)
-            try FileCopy(A_ScriptFullPath, A_ScriptDir "\macro_backup.ahk", 1)
-            fh := FileOpen(A_ScriptFullPath, "w", "UTF-8-RAW")
-            fh.Write(remoteCode)
-            fh.Close()
-            splashGui.Destroy()
-            Run('"' A_AhkPath '" "' A_ScriptFullPath '"')
-            ExitApp()
+        splashStatus.Value := "↓ v" latestVer " indiriliyor..."
+        Sleep(800)
+
+        isExe := (A_IsCompiled = 1)
+
+        if (isExe) {
+            ; EXE modunda: GitHub Releases'tan yeni EXE'yi indir
+            tmpExe := A_ScriptDir "\macro_new.exe"
+
+            ; ServerXMLHTTP otomatik redirect takip eder (GitHub latest/download için gerekli)
+            whr2 := ComObject("MSXML2.ServerXMLHTTP.6.0")
+            whr2.Open("GET", updateExeUrl, false)
+            whr2.SetRequestHeader("User-Agent", "AutoHotkey")
+            whr2.Send()
+
+            stream := ComObject("ADODB.Stream")
+            stream.Type := 1  ; binary
+            stream.Open()
+            stream.Write(whr2.ResponseBody)
+            stream.SaveToFile(tmpExe, 2)
+            stream.Close()
+
+            ; Boyut kontrolü — boş dosya indirildiyse iptal et
+            if (FileGetSize(tmpExe) < 100000) {
+                FileDelete(tmpExe)
+                splashStatus.SetFont("cff3355")
+                splashStatus.Value := "İndirme başarısız, devam ediliyor..."
+                Sleep(2000)
+            } else {
+                splashStatus.Value := "Yükleniyor, yeniden başlatılıyor..."
+                Sleep(500)
+                oldExe := A_ScriptFullPath
+                cmd := 'cmd /c ping -n 2 127.0.0.1 >nul & move /y "' tmpExe '" "' oldExe '" & start "" "' oldExe '"'
+                Run(cmd,, "Hide")
+                splashGui.Destroy()
+                ExitApp()
+            }
+        } else {
+            ; AHK modunda: AHK dosyasının kendisini güncelle
+            if (StrLen(remoteCode) > 100) {
+                splashStatus.Value := "Yükleniyor, yeniden başlatılıyor..."
+                Sleep(500)
+                try FileCopy(A_ScriptFullPath, A_ScriptDir "\macro_backup.ahk", 1)
+                fh := FileOpen(A_ScriptFullPath, "w", "UTF-8-RAW")
+                fh.Write(remoteCode)
+                fh.Close()
+                splashGui.Destroy()
+                Run('"' A_AhkPath '" "' A_ScriptFullPath '"')
+                ExitApp()
+            }
         }
     } else {
         splashStatus.SetFont("c00ff88")
@@ -118,8 +158,8 @@ try {
     }
 } catch as e {
     splashStatus.SetFont("cff3355")
-    splashStatus.Value := "Hata: " e.Message
-    Sleep(3000)
+    splashStatus.Value := "Bağlantı yok, devam ediliyor..."
+    Sleep(2000)
 }
 splashGui.Destroy()
 
@@ -136,7 +176,7 @@ G.SetFont("s7 w700 c00ff88", "Consolas")
 global sysBadge := G.Add("Text", "x14 y4 w50 h36 Background003322 Center +0x200", "SYS v" currentVersion)
 G.SetFont("s10 w800 cFFFFFF", "Consolas")
 G.Add("Text", "x70 y8 w185 Background0a0a0a", "405-B / 406-X")
-G.Add("Text", "x70 y24 w185 Background0a0a0a", "Kullanımı riskli değildir")
+G.Add("Text", "x70 y24 w185 Background0a0a0a", "Kullanımı risk teşkil etmez")
 G.Add("Text", "x260 y0 w1 h44 Background222222")
 G.SetFont("s6 ccccccc", "Consolas")
 G.Add("Text", "x262 y6 w76 h14 Background0a0a0a Center", "UPTIME")
