@@ -40,7 +40,7 @@ global ramLabel  := ""
 global updateUrl := "https://raw.githubusercontent.com/berkaycimh/macro/main/macro.ahk"
 
 ; Versiyon
-global currentVersion := "1.2"
+global currentVersion := "1.3"
 
 ; Şifre ekranı kaldırıldı
 
