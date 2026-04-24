@@ -41,7 +41,7 @@ global updateUrl    := "https://raw.githubusercontent.com/berkaycimh/macro/main/
 global updateExeUrl := "https://github.com/berkaycimh/macro/releases/latest/download/macro.exe"
 
 ; Versiyon
-global currentVersion := "1.0"
+global currentVersion := "1.4"
 
 ; Şifre ekranı kaldırıldı
 
