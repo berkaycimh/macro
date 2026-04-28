@@ -1,5 +1,6 @@
 #Requires AutoHotkey v2.0
 #SingleInstance Force
+#Warn VarUnset, Off
 SetWorkingDir A_ScriptDir
 
 ; Tray icon göster
@@ -91,7 +92,7 @@ Sleep(500)
 try {
     ; GitHub Releases API'den latest tag_name çek
     whr := ComObject("MSXML2.ServerXMLHTTP.6.0")
-    whr.Open("GET", updateApiUrl, true)
+    whr.Open("GET", updateApiUrl, false)
     whr.SetRequestHeader("User-Agent", "AutoHotkey")
     whr.Send()
     apiResponse := whr.ResponseText
