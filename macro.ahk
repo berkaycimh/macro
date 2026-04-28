@@ -22,7 +22,7 @@ global glowState := 0
 global sysBadge := ""
 global sysPulseState := 0
 global sysBarStrip := ""
-global hudAmmo := "", hudRecoil := "", hudStatus := ""
+global hudAmmo := "", hudRecoil := "", hudStatus := "", hudAmmoSub := "", hudAccentBar := "", hudAmmoIcon := "", hudRecoilBar := "", hudDotLbl := ""
 global hudVisible := true
 global hudPosLabel := ""
 global leanState := 0  ; 0=Q, 1=E
@@ -43,7 +43,7 @@ global updateApiUrl := "https://api.github.com/repos/berkaycimh/macro/releases/l
 global updateExeUrl := "https://github.com/berkaycimh/macro/releases/latest/download/PSP.exe"
 
 ; Versiyon — bu değer her zaman derlenen exe ile eşleşmeli
-global currentVersion := "1.7"
+global currentVersion := "1.8"
 
 ; Şifre ekranı kaldırıldı
 
@@ -409,6 +409,7 @@ SetTimer(GlowActive, 400)
 SetTimer(UptimeTick, 1000)
 SetTimer(UpdateRAM, 3000)
 SetTimer(SysPulse, 50)
+SetTimer(HudDotBlink, 800)
 
 ; Rastgele motivasyon yazısı
 mottos := [
@@ -426,36 +427,51 @@ mottos := [
 if IsObject(motoLabel)
     motoLabel.Value := mottos[Random(1, mottos.Length)]
 
-; ── Mini HUD Overlay ──
+; ── Mini HUD Overlay — v1 Modern ──
 HUD := Gui("+AlwaysOnTop -Caption +ToolWindow -Border -DPIScale +E0x80000 +E0x20", "HUD")
-HUD.BackColor := "0d0d14"
+HUD.BackColor := "08080f"
 HUD.MarginX := 0
 HUD.MarginY := 0
-HUD.SetFont("s8 w700 cE2E2F0", "Segoe UI")
-hudMacroTxt := HUD.Add("Text", "x6 y4 w80 Background0d0d14", "MACRO")
-HUD.SetFont("s8 w700 cef4444", "Segoe UI")
-hudStatus := HUD.Add("Text", "x52 y4 w50 Background0d0d14 Right", "OFF")
-HUD.Add("Text", "x0 y18 w110 h1 Background1a1a28")
-HUD.SetFont("s8 w600 c22c55e", "Segoe UI")
-hudAmmo := HUD.Add("Text", "x6 y22 w50 Background0d0d14", "5.56")
-HUD.SetFont("s8 c3a3a5a", "Segoe UI")
-HUD.Add("Text", "x46 y22 w20 Background0d0d14", "►")
-HUD.SetFont("s8 w700 cE2E2F0", "Segoe UI")
-hudRecoil := HUD.Add("Text", "x60 y22 w44 Background0d0d14 Right", "0")
+
+; Üst accent çizgisi
+global hudAccentBar := HUD.Add("Text", "x0 y0 w130 h2 Background00ff88")
+
+; Üst satır: MACRO label + durum dot + ON
+HUD.SetFont("s6 w700 cFFFFFF", "Segoe UI")
+HUD.Add("Text", "x7 y4 w50 h12 Background08080f", "MACRO")
+HUD.SetFont("s6 w700 c00ff88", "Segoe UI")
+global hudStatus := HUD.Add("Text", "x60 y4 w63 h12 Background08080f Right", "● ON")
+global hudDotLbl := hudStatus
+
+; Yatay ayırıcı
+HUD.Add("Text", "x7 y17 w116 h1 Background111122")
+
+; Alt satır: ammo ikonu + isim + recoil
+HUD.Add("Text", "x7 y20 w14 h14 Background0d1a12")
+HUD.SetFont("s6 w800 c00ff88", "Segoe UI")
+global hudAmmoIcon := HUD.Add("Text", "x7 y20 w14 h14 Background0d1a12 Center +0x200", "R")
+HUD.SetFont("s9 w700 c00ff88", "Segoe UI")
+global hudAmmo := HUD.Add("Text", "x24 y20 w40 h14 Background08080f", "5.56")
+HUD.SetFont("s10 w800 cFFFFFF", "Segoe UI")
+global hudRecoil := HUD.Add("Text", "x72 y19 w51 h14 Background08080f Right", "0")
+
+; Recoil bar
+HUD.Add("Text", "x72 y34 w51 h2 Background111122")
+global hudRecoilBar := HUD.Add("Text", "x72 y34 w0 h2 Background00ff88")
 
 screenW := SysGet(0)
-hudStartX := (hudX = -1) ? (screenW - 120) : hudX
-HUD.Show("w110 h36 x" hudStartX " y" hudY " NoActivate")
+hudStartX := (hudX = -1) ? (screenW - 140) : hudX
+HUD.Show("w130 h38 x" hudStartX " y" hudY " NoActivate")
 WinSetTransparent(hudOpacity, HUD)
 DllCall("dwmapi\DwmSetWindowAttribute", "ptr", HUD.Hwnd, "uint", 33, "int*", 2, "uint", 4)
-DllCall("dwmapi\DwmSetWindowAttribute", "ptr", HUD.Hwnd, "uint", 34, "int*", 0x0d0d14, "uint", 4)
+DllCall("dwmapi\DwmSetWindowAttribute", "ptr", HUD.Hwnd, "uint", 34, "int*", 0x08080f, "uint", 4)
 
 ; Click-through: mouse olaylarını oyuna geçir
 exStyle := DllCall("GetWindowLong", "ptr", HUD.Hwnd, "int", -20)
 DllCall("SetWindowLong", "ptr", HUD.Hwnd, "int", -20, "int", exStyle | 0x80000 | 0x20)
 
-; Sürükleme için sadece Ctrl basılıyken çalışsın
-hudDrag := HUD.Add("Text", "x0 y0 w110 h36 BackgroundTrans")
+; Sürükleme alanı
+hudDrag := HUD.Add("Text", "x0 y0 w130 h38 BackgroundTrans")
 hudDrag.OnEvent("Click", DragHUD)
 
 ; Boyut değişince içeriği yeniden yerleştir
@@ -632,14 +648,24 @@ UpdateRecoilDisplay() {
         recoilNum.Value := 0
         progressBar.Opt("w0")
         if IsObject(hudAmmo) {
-            hudAmmo.SetFont("c6366f1")
+            hudAmmo.SetFont("s10 w700 c6366f1")
             hudAmmo.Value := "BOMBA"
             hudRecoil.Value := 0
         }
+        if IsObject(hudAmmoIcon) {
+            hudAmmoIcon.SetFont("s7 w800 c6366f1")
+            hudAmmoIcon.Value := "B"
+            hudAmmoIcon.Opt("Background0d0d2b")
+        }
+        if IsObject(hudRecoilBar)
+            hudRecoilBar.Opt("w0")
+        if IsObject(hudAccentBar)
+            hudAccentBar.Opt("Background6366f1")
         return
     }
     colorMap := Map("5.56", "c22c55e", "7.62", "cf5c518", "9MM", "cff8c00")
     barColor := Map("5.56", "22c55e",  "7.62", "f5c518",  "9MM", "ff8c00")
+    subMap   := Map("5.56", "RIFLE",   "7.62", "DMR/SR",  "9MM", "SMG")
     recoilLabel.SetFont(colorMap[activeAmmo])
     recoilLabel.Value := activeAmmo
     val := recoilValues[activeAmmo]
@@ -648,10 +674,22 @@ UpdateRecoilDisplay() {
     barW := Round(val * 370 / 100)
     progressBar.Opt("w" . barW . " Background" . barColor[activeAmmo])
     if IsObject(hudAmmo) {
-        hudAmmo.SetFont(colorMap[activeAmmo])
+        hudAmmo.SetFont("s10 w700 " . colorMap[activeAmmo])
         hudAmmo.Value := activeAmmo
         hudRecoil.Value := val
     }
+    if IsObject(hudAmmoIcon) {
+        iconMap := Map("5.56","R","7.62","D","9MM","S","BOMBA","B")
+        hudAmmoIcon.SetFont("s7 w800 " . colorMap[activeAmmo])
+        hudAmmoIcon.Value := iconMap[activeAmmo]
+        hudAmmoIcon.Opt("Background" . (activeAmmo = "5.56" ? "0d1a12" : activeAmmo = "7.62" ? "1a1200" : activeAmmo = "9MM" ? "1a0e00" : "0d0d2b"))
+    }
+    if IsObject(hudRecoilBar) {
+        barW := Round(val * 62 / 100)
+        hudRecoilBar.Opt("w" barW " Background" barColor[activeAmmo])
+    }
+    if IsObject(hudAmmoSub)
+        hudAmmoSub.Value := subMap[activeAmmo]
     ; Otomatik kayıt
     AutoSave()
 }
@@ -682,13 +720,15 @@ DoToggleMacro() {
 }
 
 UpdateStatus() {
-    global macroOn, statusDot, hudStatus
+    global macroOn, statusDot, hudStatus, hudAccentBar
     statusDot.SetFont(macroOn ? "c00ff88" : "cff3355")
     statusDot.Value := macroOn ? "● ONLINE" : "● OFFLINE"
     if IsObject(hudStatus) {
-        hudStatus.SetFont(macroOn ? "c00ff88" : "cff3355")
-        hudStatus.Value := macroOn ? "ON" : "OFF"
+        hudStatus.SetFont(macroOn ? "s6 w700 c00ff88" : "s6 w700 cff3355")
+        hudStatus.Value := macroOn ? "● ON" : "● OFF"
     }
+    if IsObject(hudAccentBar)
+        hudAccentBar.Opt("Background" . (macroOn ? "00ff88" : "ff3355"))
 }
 
 ShowLockedNotify() {
@@ -931,21 +971,9 @@ SysPulse() {
 }
 
 ResizeHUD(thisGui, minMax, w, h) {
-    global hudMacroTxt, hudStatus, hudAmmo, hudRecoil, hudDrag
+    global hudDrag
     if (minMax = -1)
         return
-    ; Font boyutunu pencere genişliğine göre ölçekle
-    fs := Max(7, Round(w / 14))
-    hudMacroTxt.SetFont("s" fs " w700 cE2E2F0")
-    hudStatus.SetFont("s" fs " w700")
-    hudAmmo.SetFont("s" fs " w600")
-    hudRecoil.SetFont("s" fs " w700 cE2E2F0")
-    ; Kontrolleri yeniden boyutlandır
-    half := Round(w / 2)
-    hudMacroTxt.Move(6, Round(h*0.1), half, Round(h*0.45))
-    hudStatus.Move(half, Round(h*0.1), half-6, Round(h*0.45))
-    hudAmmo.Move(6, Round(h*0.55), half, Round(h*0.4))
-    hudRecoil.Move(half, Round(h*0.55), half-6, Round(h*0.4))
     hudDrag.Move(0, 0, w, h)
 }
 
@@ -963,6 +991,18 @@ MoveHUD(dx, dy) {
     if IsObject(hudPosLabel)
         hudPosLabel.Value := "X:" newX " Y:" newY
     AutoSave()
+}
+
+HudDotBlink() {
+    global hudStatus, macroOn
+    static blinkState := true
+    if !IsObject(hudStatus)
+        return
+    blinkState := !blinkState
+    if (macroOn)
+        hudStatus.SetFont(blinkState ? "s6 w700 c00ff88" : "s6 w700 c003322")
+    else
+        hudStatus.SetFont(blinkState ? "s6 w700 cff3355" : "s6 w700 c330011")
 }
 
 AutoLean() {
