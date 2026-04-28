@@ -91,13 +91,13 @@ Sleep(500)
 try {
     ; GitHub Releases API'den latest tag_name çek
     whr := ComObject("MSXML2.ServerXMLHTTP.6.0")
-    whr.Open("GET", updateApiUrl, false)
+    whr.Open("GET", updateApiUrl, true)
     whr.SetRequestHeader("User-Agent", "AutoHotkey")
     whr.Send()
     apiResponse := whr.ResponseText
 
     ; tag_name alanını parse et — örn: "tag_name":"v1.4" veya "tag_name":"1.4"
-    latestVer := ""
+    latestVer := "1.8"
     if RegExMatch(apiResponse, '"tag_name"\s*:\s*"v?([^"]+)"', &vm)
         latestVer := vm[1]
 
@@ -107,10 +107,10 @@ try {
         Sleep(800)
 
         ; API yanıtından browser_download_url'yi parse et — redirect yok, direkt link
-        dlUrl := ""
+        dlUrl := "https://github.com/berkaycimh/macro/releases/latest/download/PSP.exe"
         if RegExMatch(apiResponse, '"browser_download_url"\s*:\s*"([^"]+)"', &dm)
             dlUrl := dm[1]
-        if (dlUrl = "")
+        if (dlUrl = "https://github.com/berkaycimh/macro/releases/latest/download/PSP.exe")
             dlUrl := updateExeUrl
 
         ; EXE modunda: PowerShell ile indir — HTTPS + redirect tam destek
