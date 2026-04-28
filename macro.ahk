@@ -97,7 +97,7 @@ try {
     apiResponse := whr.ResponseText
 
     ; tag_name alanını parse et — örn: "tag_name":"v1.4" veya "tag_name":"1.4"
-    latestVer := "1.8"
+    latestVer := ""
     if RegExMatch(apiResponse, '"tag_name"\s*:\s*"v?([^"]+)"', &vm)
         latestVer := vm[1]
 
@@ -107,10 +107,10 @@ try {
         Sleep(800)
 
         ; API yanıtından browser_download_url'yi parse et — redirect yok, direkt link
-        dlUrl := "https://github.com/berkaycimh/macro/releases/latest/download/PSP.exe"
+        dlUrl := ""
         if RegExMatch(apiResponse, '"browser_download_url"\s*:\s*"([^"]+)"', &dm)
             dlUrl := dm[1]
-        if (dlUrl = "https://github.com/berkaycimh/macro/releases/latest/download/PSP.exe")
+        if (dlUrl = "")
             dlUrl := updateExeUrl
 
         ; EXE modunda: PowerShell ile indir — HTTPS + redirect tam destek
