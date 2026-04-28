@@ -115,7 +115,7 @@ try {
         tmpExe := A_ScriptDir "\macro_new.exe"
         try FileDelete(tmpExe)
 
-        psCmd := 'powershell -NoProfile -NonInteractive -Command "Invoke-WebRequest -Uri ''' dlUrl ''' -OutFile ''' tmpExe ''' -UseBasicParsing"'
+        psCmd := 'powershell -NoProfile -NonInteractive -Command "Invoke-WebRequest -Uri ' "'" dlUrl "'" ' -OutFile ' "'" tmpExe "'" ' -UseBasicParsing"'
         RunWait(psCmd,, "Hide")
 
         ; Boyut kontrolü — 1MB altıysa geçersiz say
