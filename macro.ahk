@@ -104,16 +104,31 @@ try {
         splashStatus.Value := "↓ v" latestVer " indiriliyor..."
         Sleep(800)
 
+        ; API yanıtından browser_download_url'yi parse et — redirect yok, direkt link
+        dlUrl := ""
+        if RegExMatch(apiResponse, '"browser_download_url"\s*:\s*"([^"]+)"', &dm)
+            dlUrl := dm[1]
+        if (dlUrl = "")
+            dlUrl := updateExeUrl
+
         ; EXE modunda: GitHub Releases'tan yeni EXE'yi indir
         tmpExe := A_ScriptDir "\macro_new.exe"
 
-        ; curl ile indir — redirect'leri otomatik takip eder, Windows 10+ built-in
-        tmpExe := A_ScriptDir "\macro_new.exe"
-        RunWait('curl -L -s -o "' tmpExe '" "' updateExeUrl '"',, "Hide")
+        whr2 := ComObject("MSXML2.ServerXMLHTTP.6.0")
+        whr2.Open("GET", dlUrl, false)
+        whr2.SetRequestHeader("User-Agent", "AutoHotkey")
+        whr2.Send()
+
+        stream := ComObject("ADODB.Stream")
+        stream.Type := 1  ; binary
+        stream.Open()
+        stream.Write(whr2.ResponseBody)
+        stream.SaveToFile(tmpExe, 2)
+        stream.Close()
 
         ; Boyut kontrolü — 1MB altıysa geçersiz say
-        if (!FileExist(tmpExe) || FileGetSize(tmpExe) < 1000000) {
-            try FileDelete(tmpExe)
+        if (FileGetSize(tmpExe) < 1000000) {
+            FileDelete(tmpExe)
             splashStatus.SetFont("cff3355")
             splashStatus.Value := "İndirme başarısız, devam ediliyor..."
             Sleep(2000)
