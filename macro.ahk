@@ -91,6 +91,16 @@ Sleep(1000)
 splashStatus.Value := "Sunucuya bağlanılıyor..."
 Sleep(500)
 
+; Güncelleme flag kontrolü — döngüyü önle
+if FileExist(A_ScriptDir "\updated.flag") {
+    FileDelete(A_ScriptDir "\updated.flag")
+    splashStatus.SetFont("c00ff88")
+    splashStatus.Value := "✔ Güncellendi — v" currentVersion
+    Sleep(1500)
+    splashGui.Destroy()
+    goto SkipUpdate
+}
+
 try {
     ; GitHub Releases API'den latest tag_name çek
     whr := ComObject("MSXML2.ServerXMLHTTP.6.0")
@@ -133,6 +143,8 @@ try {
             splashStatus.Value := "Yükleniyor, yeniden başlatılıyor..."
             Sleep(500)
             oldExe := A_ScriptFullPath
+            ; Flag dosyası bırak — yeni EXE güncelleme döngüsüne girmesin
+            FileAppend("updated", A_ScriptDir "\updated.flag")
             cmd := 'cmd /c ping -n 2 127.0.0.1 >nul & move /y "' tmpExe '" "' oldExe '" & start "" "' oldExe '"'
             Run(cmd,, "Hide")
             splashGui.Destroy()
@@ -149,6 +161,7 @@ try {
     Sleep(2000)
 }
 splashGui.Destroy()
+SkipUpdate:
 ; ─── GUI ───────────────────────────────────────────────────────────────────
 G := Gui("+AlwaysOnTop -Caption +ToolWindow", "")
 G.BackColor := "0e0e0e"
