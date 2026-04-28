@@ -25,6 +25,8 @@ global sysBarStrip := ""
 global hudAmmo := "", hudRecoil := "", hudStatus := ""
 global hudVisible := true
 global hudPosLabel := ""
+global leanState := 0  ; 0=Q, 1=E
+global leanOn := false  ; her açılışta kapalı
 
 ; İstatistik değişkenleri
 global statTotal := 0
@@ -41,7 +43,7 @@ global updateApiUrl := "https://api.github.com/repos/berkaycimh/macro/releases/l
 global updateExeUrl := "https://github.com/berkaycimh/macro/releases/latest/download/PSP.exe"
 
 ; Versiyon — bu değer her zaman derlenen exe ile eşleşmeli
-global currentVersion := "1.6"
+global currentVersion := "1.7"
 
 ; Şifre ekranı kaldırıldı
 
@@ -337,35 +339,47 @@ G.SetFont("s9 w700 c4488ff", "Consolas")
 saveBtn := G.Add("Text", "x291 y318 w109 h42 Background001020 Center +0x200", "KAYDET")
 saveBtn.OnEvent("Click", (*) => DoSave())
 
-; ── Önerilen Ayarlar (y=360) ──
+; ── Q/E Eğilme Modu (y=360) ──
 G.Add("Text", "x0 y360 w400 h1 Background222222")
 G.Add("Text", "x0 y361 w400 h42 Background0e0e0e")
-G.SetFont("s10 w600 cffb300", "Consolas")
-G.Add("Text", "x14 y369 w200 Background0e0e0e", "Önerilen Ayarlar")
+G.SetFont("s10 w600 ccccccc", "Consolas")
+G.Add("Text", "x14 y369 w200 Background0e0e0e", "Q/E Eğilme Modu")
 G.SetFont("s7 c555555", "Consolas")
-G.Add("Text", "x14 y383 w200 Background0e0e0e", "Hazır recoil profilleri")
+G.Add("Text", "x14 y383 w200 Background0e0e0e", "Ateş ederken oto sağ/sol")
 G.Add("Text", "x290 y361 w1 h42 Background222222")
+G.SetFont("s9 w700 cff3355", "Consolas")
+global leanBtn := G.Add("Text", "x291 y361 w109 h42 Background1a0008 Center +0x200", "✘ PASİF")
+leanBtn.OnEvent("Click", (*) => ToggleLean())
+
+; ── Önerilen Ayarlar (y=403) ──
+G.Add("Text", "x0 y403 w400 h1 Background222222")
+G.Add("Text", "x0 y404 w400 h42 Background0e0e0e")
+G.SetFont("s10 w600 cffb300", "Consolas")
+G.Add("Text", "x14 y411 w200 Background0e0e0e", "Önerilen Ayarlar")
+G.SetFont("s7 c555555", "Consolas")
+G.Add("Text", "x14 y425 w200 Background0e0e0e", "Hazır recoil profilleri")
+G.Add("Text", "x290 y403 w1 h42 Background222222")
 G.SetFont("s9 w700 cffb300", "Consolas")
-presetBtn := G.Add("Text", "x291 y361 w109 h42 Background1a1000 Center +0x200", "⚙ ÖNERİ")
+presetBtn := G.Add("Text", "x291 y403 w109 h42 Background1a1000 Center +0x200", "⚙ ÖNERİ")
 presetBtn.OnEvent("Click", (*) => OpenPresetGui())
 
-; ── Footer (y=403) ──
-G.Add("Text", "x0 y403 w400 h1 Background222222")
-G.Add("Text", "x0 y404 w400 h28 Background0a0a0a")
+; ── Footer (y=445) ──
+G.Add("Text", "x0 y445 w400 h1 Background222222")
+G.Add("Text", "x0 y446 w400 h28 Background0a0a0a")
 G.SetFont("s8 w800 cFFFFFF", "Consolas")
-global rgbLabel := G.Add("Text", "x14 y413 w100 Background0a0a0a", "berkaycimh")
+global rgbLabel := G.Add("Text", "x14 y455 w100 Background0a0a0a", "berkaycimh")
 G.SetFont("s7 c333333", "Consolas")
-global verLabel := G.Add("Text", "x160 y414 w80 Background0a0a0a Center", "v" currentVersion)
+global verLabel := G.Add("Text", "x160 y456 w80 Background0a0a0a Center", "v" currentVersion)
 G.SetFont("s7 c00ff88", "Consolas")
-global ramLabel := G.Add("Text", "x280 y414 w100 Background0a0a0a Right", "RAM: --")
-G.Show("w400 h432")
+global ramLabel := G.Add("Text", "x280 y456 w100 Background0a0a0a Right", "RAM: --")
+G.Show("w400 h474")
 
 ; Başlangıç animasyonu — yukarıdan aşağı kayarak gel
 screenW := SysGet(0)
 screenH := SysGet(1)
 startX := (screenW - 400) // 2
-startY := -432
-targetY := (screenH - 432) // 2
+startY := -474
+targetY := (screenH - 474) // 2
 G.Move(startX, startY)
 G.Show("NoActivate")
 loop {
@@ -497,25 +511,27 @@ Down::
 }
 
 ~LButton:: {
-    global macroOn, shooting
+    global macroOn, shooting, leanState
     if (!macroOn)
         return
-    ; Sağ tık basılıysa (nişan almadan atma = bomba/sis) çalışma
     if GetKeyState("RButton")
         return
-    ; Kısa gecikme — fırlatma animasyonunu atla
     Sleep(50)
-    ; Hala sol tık basılıysa silah ateşi, devam et
     if !GetKeyState("LButton")
         return
     shooting := true
+    leanState := 0
     SetTimer(ApplyRecoil, 10)
+    SetTimer(AutoLean, 450)
+    if (leanOn)
+        AutoLean()
 }
 
 ~LButton Up:: {
     global shooting
     shooting := false
     SetTimer(ApplyRecoil, 0)
+    SetTimer(AutoLean, 0)
 }
 
 ; ─── Fonksiyonlar ──────────────────────────────────────────────────────────
@@ -947,6 +963,31 @@ MoveHUD(dx, dy) {
     if IsObject(hudPosLabel)
         hudPosLabel.Value := "X:" newX " Y:" newY
     AutoSave()
+}
+
+AutoLean() {
+    global shooting, macroOn, leanState, leanOn
+    if (!shooting || !macroOn || !leanOn)
+        return
+    if (leanState = 0) {
+        SendInput("{q down}")
+        Sleep(400)
+        SendInput("{q up}")
+        leanState := 1
+    } else {
+        SendInput("{e down}")
+        Sleep(400)
+        SendInput("{e up}")
+        leanState := 0
+    }
+}
+
+ToggleLean() {
+    global leanOn, leanBtn
+    leanOn := !leanOn
+    leanBtn.Value := leanOn ? "✔ AKTİF" : "✘ PASİF"
+    leanBtn.SetFont(leanOn ? "c00ff88" : "cff3355")
+    leanBtn.Opt("Background" . (leanOn ? "001a0a" : "1a0008"))
 }
 
 DragWin(*) {
