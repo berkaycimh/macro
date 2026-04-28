@@ -111,7 +111,6 @@ try {
         whr2 := ComObject("WinHttp.WinHttpRequest.5.1")
         whr2.Open("GET", updateExeUrl, false)
         whr2.SetRequestHeader("User-Agent", "AutoHotkey")
-        whr2.Option(6) := true   ; redirect'leri takip et
         whr2.Send()
 
         stream := ComObject("ADODB.Stream")
