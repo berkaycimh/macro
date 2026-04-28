@@ -111,24 +111,16 @@ try {
         if (dlUrl = "")
             dlUrl := updateExeUrl
 
-        ; EXE modunda: GitHub Releases'tan yeni EXE'yi indir
+        ; EXE modunda: PowerShell ile indir — HTTPS + redirect tam destek
         tmpExe := A_ScriptDir "\macro_new.exe"
+        try FileDelete(tmpExe)
 
-        whr2 := ComObject("MSXML2.ServerXMLHTTP.6.0")
-        whr2.Open("GET", dlUrl, false)
-        whr2.SetRequestHeader("User-Agent", "AutoHotkey")
-        whr2.Send()
-
-        stream := ComObject("ADODB.Stream")
-        stream.Type := 1  ; binary
-        stream.Open()
-        stream.Write(whr2.ResponseBody)
-        stream.SaveToFile(tmpExe, 2)
-        stream.Close()
+        psCmd := 'powershell -NoProfile -NonInteractive -Command "Invoke-WebRequest -Uri ''' dlUrl ''' -OutFile ''' tmpExe ''' -UseBasicParsing"'
+        RunWait(psCmd,, "Hide")
 
         ; Boyut kontrolü — 1MB altıysa geçersiz say
-        if (FileGetSize(tmpExe) < 1000000) {
-            FileDelete(tmpExe)
+        if (!FileExist(tmpExe) || FileGetSize(tmpExe) < 1000000) {
+            try FileDelete(tmpExe)
             splashStatus.SetFont("cff3355")
             splashStatus.Value := "İndirme başarısız, devam ediliyor..."
             Sleep(2000)
