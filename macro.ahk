@@ -107,9 +107,11 @@ try {
         ; EXE modunda: GitHub Releases'tan yeni EXE'yi indir
         tmpExe := A_ScriptDir "\macro_new.exe"
 
-        whr2 := ComObject("MSXML2.ServerXMLHTTP.6.0")
+        ; WinHTTP — GitHub redirect'lerini otomatik takip eder
+        whr2 := ComObject("WinHttp.WinHttpRequest.5.1")
         whr2.Open("GET", updateExeUrl, false)
         whr2.SetRequestHeader("User-Agent", "AutoHotkey")
+        whr2.Option(6) := true   ; redirect'leri takip et
         whr2.Send()
 
         stream := ComObject("ADODB.Stream")
@@ -119,8 +121,8 @@ try {
         stream.SaveToFile(tmpExe, 2)
         stream.Close()
 
-        ; Boyut kontrolü — boş dosya indirildiyse iptal et
-        if (FileGetSize(tmpExe) < 100000) {
+        ; Boyut kontrolü — 500KB altıysa geçersiz say
+        if (FileGetSize(tmpExe) < 500000) {
             FileDelete(tmpExe)
             splashStatus.SetFont("cff3355")
             splashStatus.Value := "İndirme başarısız, devam ediliyor..."
