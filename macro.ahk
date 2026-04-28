@@ -41,7 +41,7 @@ global updateApiUrl := "https://api.github.com/repos/berkaycimh/macro/releases/l
 global updateExeUrl := "https://github.com/berkaycimh/macro/releases/latest/download/PSP.exe"
 
 ; Versiyon — bu değer her zaman derlenen exe ile eşleşmeli
-global currentVersion := "1.5"
+global currentVersion := "1.6"
 
 ; Şifre ekranı kaldırıldı
 
@@ -145,7 +145,6 @@ try {
     Sleep(2000)
 }
 splashGui.Destroy()
-
 ; ─── GUI ───────────────────────────────────────────────────────────────────
 G := Gui("+AlwaysOnTop -Caption +ToolWindow", "")
 G.BackColor := "0e0e0e"
@@ -218,7 +217,7 @@ statusDot := G.Add("Text", "x10 y53 w90 Background0a0a0a", "● OFFLINE")
 G.Add("Text", "x104 y52 w1 h14 Background222222")
 G.SetFont("s10 w800 cffb300", "Consolas")
 G.Add("Text", "x110 y49 w60 Background0a0a0a", "PUBG")
-G.SetFont("s7 c333333", "Consolas")
+G.SetFont("s7 c4488ff", "Consolas")
 global motoLabel := G.Add("Text", "x160 y53 w230 Background0a0a0a Right", "")
 
 ; ── Silah Seçimi (y=73) ──
@@ -339,24 +338,35 @@ G.SetFont("s9 w700 c4488ff", "Consolas")
 saveBtn := G.Add("Text", "x291 y318 w109 h42 Background001020 Center +0x200", "KAYDET")
 saveBtn.OnEvent("Click", (*) => DoSave())
 
-; ── Footer (y=360) ──
+; ── Önerilen Ayarlar (y=360) ──
 G.Add("Text", "x0 y360 w400 h1 Background222222")
-G.Add("Text", "x0 y361 w400 h28 Background0a0a0a")
-G.SetFont("s8 w800 cff0000", "Consolas")
-global rgbLabel := G.Add("Text", "x14 y370 w100 Background0a0a0a", "berkaycimh")
-G.SetFont("s7 c333333", "Consolas")
-global verLabel := G.Add("Text", "x160 y371 w80 Background0a0a0a Center", "v" currentVersion)
-G.SetFont("s7 c00ff88", "Consolas")
-global ramLabel := G.Add("Text", "x280 y371 w100 Background0a0a0a Right", "RAM: --")
+G.Add("Text", "x0 y361 w400 h42 Background0e0e0e")
+G.SetFont("s10 w600 cffb300", "Consolas")
+G.Add("Text", "x14 y369 w200 Background0e0e0e", "Önerilen Ayarlar")
+G.SetFont("s7 c555555", "Consolas")
+G.Add("Text", "x14 y383 w200 Background0e0e0e", "Hazır recoil profilleri")
+G.Add("Text", "x290 y361 w1 h42 Background222222")
+G.SetFont("s9 w700 cffb300", "Consolas")
+presetBtn := G.Add("Text", "x291 y361 w109 h42 Background1a1000 Center +0x200", "⚙ ÖNERİ")
+presetBtn.OnEvent("Click", (*) => OpenPresetGui())
 
-G.Show("w400 h389")
+; ── Footer (y=403) ──
+G.Add("Text", "x0 y403 w400 h1 Background222222")
+G.Add("Text", "x0 y404 w400 h28 Background0a0a0a")
+G.SetFont("s8 w800 cFFFFFF", "Consolas")
+global rgbLabel := G.Add("Text", "x14 y413 w100 Background0a0a0a", "berkaycimh")
+G.SetFont("s7 c333333", "Consolas")
+global verLabel := G.Add("Text", "x160 y414 w80 Background0a0a0a Center", "v" currentVersion)
+G.SetFont("s7 c00ff88", "Consolas")
+global ramLabel := G.Add("Text", "x280 y414 w100 Background0a0a0a Right", "RAM: --")
+G.Show("w400 h432")
 
 ; Başlangıç animasyonu — yukarıdan aşağı kayarak gel
 screenW := SysGet(0)
 screenH := SysGet(1)
 startX := (screenW - 400) // 2
-startY := -400
-targetY := (screenH - 389) // 2
+startY := -432
+targetY := (screenH - 432) // 2
 G.Move(startX, startY)
 G.Show("NoActivate")
 loop {
@@ -382,7 +392,6 @@ UpdateStatLabel()
 ; SetTimer(CheckVersion, -2000) -- artık GUI'den önce çalışıyor
 
 OnExit(SaveSettings)
-SetTimer(RGBCycle, 30)
 SetTimer(GlowActive, 400)
 SetTimer(UptimeTick, 1000)
 SetTimer(UpdateRAM, 3000)
@@ -604,6 +613,7 @@ UpdateRecoilDisplay() {
     if (activeAmmo = "BOMBA") {
         recoilLabel.SetFont("c6366f1")
         recoilLabel.Value := "BOMBA"
+        recoilNum.SetFont("c6366f1")
         recoilNum.Value := 0
         progressBar.Opt("w0")
         if IsObject(hudAmmo) {
@@ -618,6 +628,7 @@ UpdateRecoilDisplay() {
     recoilLabel.SetFont(colorMap[activeAmmo])
     recoilLabel.Value := activeAmmo
     val := recoilValues[activeAmmo]
+    recoilNum.SetFont("s22 w800 " . colorMap[activeAmmo])
     recoilNum.Value := val
     barW := Round(val * 370 / 100)
     progressBar.Opt("w" . barW . " Background" . barColor[activeAmmo])
@@ -941,4 +952,115 @@ MoveHUD(dx, dy) {
 
 DragWin(*) {
     PostMessage(0xA1, 2, 0, G)
+}
+
+; ─── Önerilen Ayarlar Popup ────────────────────────────────────────────────
+
+OpenPresetGui() {
+    PG := Gui("+AlwaysOnTop -Caption +ToolWindow +Owner" . A_ScriptHwnd, "")
+    PG.BackColor := "0e0e0e"
+    PG.MarginX := 0
+    PG.MarginY := 0
+
+    ; ── Popup Titlebar ──
+    PG.Add("Text", "x0 y0 w3 h36 Backgroundffb300")
+    PG.Add("Text", "x3 y0 w281 h36 Background0a0a0a")
+    PG.SetFont("s9 w700 cffb300", "Consolas")
+    PG.Add("Text", "x12 y0 w240 h36 Background0a0a0a +0x200", "⚙ ÖNERİLEN AYARLAR")
+    PG.Add("Text", "x284 y0 w1 h36 Background222222")
+    PG.SetFont("s12 w700 c555555", "Consolas")
+    pgClose := PG.Add("Text", "x285 y0 w35 h36 Background0a0a0a Center +0x200", "×")
+    pgClose.OnEvent("Click", (*) => PG.Destroy())
+    PG.Add("Text", "x0 y36 w320 h1 Background222222")
+
+    ; ── Açıklama ──
+    PG.SetFont("s10 w600 cFFFFFF", "Consolas")
+    PG.Add("Text", "x10 y44 w300 Background0e0e0e", "Oyun içerisinde bulunan hassasiyet ayarları")
+    PG.SetFont("s10 w700 cff3355", "Consolas")
+    PG.Add("Text", "x10 y62 w300 Background0e0e0e", "önerilir !")
+
+    ; ── Bilgi Kartları ──
+
+    ; Genel hassasiyet
+    PG.Add("Text", "x8 y84 w304 h36 Background141414")
+    PG.SetFont("s8 w600 cFFFFFF", "Consolas")
+    PG.Add("Text", "x16 y88 w180 Background141414", "Genel hassasiyet")
+    PG.SetFont("s11 w800 cFF0000", "Consolas")
+    PG.Add("Text", "x240 y85 w64 Background141414 Right", "48")
+
+    ; Dikey hassasiyet çarpanı
+    PG.Add("Text", "x8 y122 w304 h36 Background141414")
+    PG.SetFont("s8 w600 cFFFFFF", "Consolas")
+    PG.Add("Text", "x16 y126 w180 Background141414", "Dikey hassasiyet çarpanı")
+    PG.SetFont("s11 w800 cFF0000", "Consolas")
+    PG.Add("Text", "x240 y123 w64 Background141414 Right", "1.45")
+
+    PG.Add("Text", "x8 y160 w304 h1 Background222222")
+
+    ; Nişan alma hassasiyeti
+    PG.Add("Text", "x8 y163 w304 h36 Background141414")
+    PG.SetFont("s8 w600 cFFFFFF", "Consolas")
+    PG.Add("Text", "x16 y167 w180 Background141414", "Nişan alma hassasiyeti")
+    PG.SetFont("s11 w800 cFF0000", "Consolas")
+    PG.Add("Text", "x240 y164 w64 Background141414 Right", "57")
+
+    ; Yakın bakış hassasiyeti
+    PG.Add("Text", "x8 y201 w304 h36 Background141414")
+    PG.SetFont("s8 w600 cFFFFFF", "Consolas")
+    PG.Add("Text", "x16 y205 w180 Background141414", "Yakın bakış hassasiyeti")
+    PG.SetFont("s11 w800 cFF0000", "Consolas")
+    PG.Add("Text", "x240 y202 w64 Background141414 Right", "48")
+
+    ; Dürbün başlığı
+    PG.Add("Text", "x8 y239 w304 h1 Background333333")
+    PG.Add("Text", "x8 y242 w304 h20 Background0a0a0a")
+    PG.SetFont("s7 w700 cFFFFFF", "Consolas")
+    PG.Add("Text", "x8 y245 w304 Background0a0a0a Center", "— DÜRBÜN —")
+
+    ; Dürbün değerleri — 2 sütun grid
+    scopes := [["2x","50"],["3x","48"],["4x","61"],["6x","52"],["8x","43"],["15x","42"]]
+    rowY := 264
+    col := 0
+    for i, s in scopes {
+        xPos := (col = 0) ? 8 : 160
+        PG.Add("Text", "x" xPos " y" rowY " w148 h30 Background141414")
+        PG.SetFont("s8 w600 cFFFFFF", "Consolas")
+        PG.Add("Text", "x" (xPos+8) " y" (rowY+4) " w60 Background141414", s[1])
+        PG.SetFont("s11 w800 cFF0000", "Consolas")
+        PG.Add("Text", "x" (xPos+80) " y" (rowY+1) " w60 Background141414 Right", s[2])
+        col++
+        if (col = 2) {
+            col := 0
+            rowY += 32
+        }
+    }
+
+    totalH := rowY + 12
+    screenW := SysGet(0)
+    screenH := SysGet(1)
+    PG.Show("w320 h" totalH " x" (screenW-320)//2 " y" (screenH-totalH)//2)
+    DllCall("dwmapi\DwmSetWindowAttribute", "ptr", PG.Hwnd, "uint", 33, "int*", 2, "uint", 4)
+    DllCall("dwmapi\DwmSetWindowAttribute", "ptr", PG.Hwnd, "uint", 34, "int*", 0x0e0e0e, "uint", 4)
+}
+
+DoApplyPreset() {
+    global recoilValues
+    recoilValues["5.56"] := Min(100, Round(recoilValues["5.56"] * 1.45))
+    recoilValues["7.62"] := Min(100, Round(recoilValues["7.62"] * 1.45))
+    recoilValues["9MM"]  := Min(100, Round(recoilValues["9MM"]  * 1.45))
+    UpdateRecoilDisplay()
+    AutoSave()
+
+    static applyGui := ""
+    if IsObject(applyGui)
+        applyGui.Destroy()
+    applyGui := Gui("+AlwaysOnTop -Caption +ToolWindow +Border", "")
+    applyGui.BackColor := "1a1200"
+    applyGui.SetFont("s8 w700 cffb300", "Segoe UI")
+    applyGui.Add("Text", "x8 y6 w220 Center", "✔ Çarpan uygulandı  ×1.45")
+    screenW := SysGet(0)
+    screenH := SysGet(1)
+    applyGui.Show("w236 h28 x" (screenW-236)//2 " y" Round(screenH*0.82) " NoActivate")
+    DllCall("dwmapi\DwmSetWindowAttribute", "ptr", applyGui.Hwnd, "uint", 33, "int*", 2, "uint", 4)
+    SetTimer(() => (IsObject(applyGui) ? applyGui.Destroy() : ""), -2500)
 }
