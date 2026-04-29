@@ -23,13 +23,16 @@ global glowState := 0
 global sysBadge := ""
 global sysPulseState := 0
 global sysBarStrip := ""
-global hudAmmo := "", hudRecoil := "", hudStatus := "", hudAmmoSub := "", hudAccentBar := "", hudAmmoIcon := "", hudRecoilBar := "", hudDotLbl := ""
+global hudAmmo := "", hudRecoil := "", hudStatus := "", hudAmmoSub := "", hudAccentBar := "", hudAccentFade := "", hudAmmoIcon := "", hudRecoilBar := "", hudDotLbl := "", hudLeanStatus := ""
 global hudVisible := true
 global hudPosLabel := ""
-global leanState := 0  ; 0=Q, 1=E
+global leanState := 0  ; 0=sol, 1=sağ
 global leanOn := false  ; her açılışta kapalı
-global leanKeyLeft := "q"   ; sol eğilme tuşu
-global leanKeyRight := "e"  ; sağ eğilme tuşu
+global leanKeyLeft := "q"    ; sol eğilme tuşu
+global leanKeyRight := "e"   ; sağ eğilme tuşu
+global leanSpeed := 450       ; ms — eğilme aralığı
+global leanDelay := 0         ; ms — ateş başlayınca kaç ms sonra devreye girsin
+global leanToggleKey := ""    ; açma/kapama hotkey
 
 ; İstatistik değişkenleri
 global statTotal := 0
@@ -46,7 +49,7 @@ global updateApiUrl := "https://api.github.com/repos/berkaycimh/macro/releases/l
 global updateExeUrl := "https://github.com/berkaycimh/macro/releases/latest/download/PSP.exe"
 
 ; Versiyon — bu değer her zaman derlenen exe ile eşleşmeli
-global currentVersion := "1.9"
+global currentVersion := "2.0"
 
 ; Şifre ekranı kaldırıldı
 
@@ -185,8 +188,13 @@ G.Add("Text", "x334 y0 w1 h44 Background222222")
 G.SetFont("s12 w700 c555555", "Consolas")
 minBtn   := G.Add("Text", "x335 y0 w36 h44 Background0a0a0a Center +0x200", "─")
 closeBtn := G.Add("Text", "x373 y0 w27 h44 Background0a0a0a Center +0x200", "×")
-minBtn.OnEvent("Click",    (*) => G.Hide())
-closeBtn.OnEvent("Click",  (*) => ExitApp())
+minBtn.OnEvent("Click", (*) => G.Hide())
+closeBtn.OnEvent("Click", (*) => ExitApp())
+
+; Tray menüsü — GUI'yi geri aç
+A_TrayMenu.Add("Göster", (*) => G.Show())
+A_TrayMenu.Add("Çıkış", (*) => ExitApp())
+A_TrayMenu.Default := "Göster"
 
 ; Çizgiyi WM_PAINT ile her zaman yeniden çiz — hiçbir kontrol silemez
 OnMessage(0x000F, DrawTitleLines)
@@ -357,55 +365,49 @@ saveBtn.OnEvent("Click", (*) => DoSave())
 
 ; ── Q/E Eğilme Modu (y=360) ──
 G.Add("Text", "x0 y360 w400 h1 Background222222")
-G.Add("Text", "x0 y361 w400 h64 Background0e0e0e")
-G.SetFont("s10 w600 ccccccc", "Consolas")
-G.Add("Text", "x14 y369 w180 Background0e0e0e", "Eğilme Modu")
-G.SetFont("s7 c555555", "Consolas")
-G.Add("Text", "x14 y383 w180 Background0e0e0e", "Ateş ederken oto sağ/sol")
-; Sol tuş butonu
+G.Add("Text", "x0 y361 w400 h42 Background0e0e0e")
+G.SetFont("s9 w600 ccccccc", "Consolas")
+G.Add("Text", "x14 y365 w270 Background0e0e0e", "Eğilme Modu")
+G.SetFont("s6 c555555", "Consolas")
+G.Add("Text", "x14 y378 w270 Background0e0e0e", "SOL:Q  SAĞ:E  HIZ:450ms  GECİK:0  TUŞU:YOK")
+; Ayar butonu
 G.SetFont("s7 w700 c4488ff", "Consolas")
-G.Add("Text", "x14 y397 w30 h22 Background0e0e0e", "SOL:")
-global leanLeftBtn := G.Add("Text", "x46 y397 w50 h22 Background141414 Center +0x200", "Q")
-leanLeftBtn.OnEvent("Click", (*) => AssignLeanKey("left"))
-; Sağ tuş butonu
-G.SetFont("s7 w700 c4488ff", "Consolas")
-G.Add("Text", "x104 y397 w30 h22 Background0e0e0e", "SAĞ:")
-global leanRightBtn := G.Add("Text", "x136 y397 w50 h22 Background141414 Center +0x200", "E")
-leanRightBtn.OnEvent("Click", (*) => AssignLeanKey("right"))
-G.Add("Text", "x290 y361 w1 h64 Background222222")
+global leanSettingsBtn := G.Add("Text", "x14 y390 w60 h12 Background0e0e0e", "⚙ Ayarla")
+leanSettingsBtn.OnEvent("Click", (*) => OpenLeanSettings())
+G.Add("Text", "x290 y361 w1 h42 Background222222")
 G.SetFont("s9 w700 cff3355", "Consolas")
-global leanBtn := G.Add("Text", "x291 y361 w109 h64 Background1a0008 Center +0x200", "✘ PASİF")
+global leanBtn := G.Add("Text", "x291 y361 w109 h42 Background1a0008 Center +0x200", "✘ PASİF")
 leanBtn.OnEvent("Click", (*) => ToggleLean())
 
-; ── Önerilen Ayarlar (y=425) ──
-G.Add("Text", "x0 y425 w400 h1 Background222222")
-G.Add("Text", "x0 y426 w400 h42 Background0e0e0e")
+; ── Önerilen Ayarlar (y=403) ──
+G.Add("Text", "x0 y403 w400 h1 Background222222")
+G.Add("Text", "x0 y404 w400 h42 Background0e0e0e")
 G.SetFont("s10 w600 cffb300", "Consolas")
-G.Add("Text", "x14 y433 w200 Background0e0e0e", "Önerilen Ayarlar")
+G.Add("Text", "x14 y411 w200 Background0e0e0e", "Önerilen Ayarlar")
 G.SetFont("s7 c555555", "Consolas")
-G.Add("Text", "x14 y447 w200 Background0e0e0e", "Hazır recoil profilleri")
-G.Add("Text", "x290 y425 w1 h42 Background222222")
+G.Add("Text", "x14 y425 w200 Background0e0e0e", "Hazır recoil profilleri")
+G.Add("Text", "x290 y403 w1 h42 Background222222")
 G.SetFont("s9 w700 cffb300", "Consolas")
-presetBtn := G.Add("Text", "x291 y425 w109 h42 Background1a1000 Center +0x200", "⚙ ÖNERİ")
+presetBtn := G.Add("Text", "x291 y403 w109 h42 Background1a1000 Center +0x200", "⚙ ÖNERİ")
 presetBtn.OnEvent("Click", (*) => OpenPresetGui())
 
-; ── Footer (y=467) ──
-G.Add("Text", "x0 y467 w400 h1 Background222222")
-G.Add("Text", "x0 y468 w400 h28 Background0a0a0a")
+; ── Footer (y=445) ──
+G.Add("Text", "x0 y445 w400 h1 Background222222")
+G.Add("Text", "x0 y446 w400 h28 Background0a0a0a")
 G.SetFont("s8 w800 cFFFFFF", "Consolas")
-global rgbLabel := G.Add("Text", "x14 y477 w100 Background0a0a0a", "berkaycimh")
+global rgbLabel := G.Add("Text", "x14 y455 w100 Background0a0a0a", "berkaycimh")
 G.SetFont("s7 c333333", "Consolas")
-global verLabel := G.Add("Text", "x160 y478 w80 Background0a0a0a Center", "v" currentVersion)
+global verLabel := G.Add("Text", "x160 y456 w80 Background0a0a0a Center", "v" currentVersion)
 G.SetFont("s7 c00ff88", "Consolas")
-global ramLabel := G.Add("Text", "x280 y478 w100 Background0a0a0a Right", "RAM: --")
-G.Show("w400 h496")
+global ramLabel := G.Add("Text", "x280 y456 w100 Background0a0a0a Right", "RAM: --")
+G.Show("w400 h474")
 
 ; Başlangıç animasyonu — yukarıdan aşağı kayarak gel
 screenW := SysGet(0)
 screenH := SysGet(1)
 startX := (screenW - 400) // 2
-startY := -496
-targetY := (screenH - 496) // 2
+startY := -474
+targetY := (screenH - 474) // 2
 G.Move(startX, startY)
 G.Show("NoActivate")
 loop {
@@ -435,7 +437,7 @@ SetTimer(GlowActive, 400)
 SetTimer(UptimeTick, 1000)
 SetTimer(UpdateRAM, 3000)
 SetTimer(SysPulse, 50)
-SetTimer(HudDotBlink, 800)
+SetTimer(HudDotBlink, 50)
 
 ; Rastgele motivasyon yazısı
 mottos := [
@@ -453,51 +455,62 @@ mottos := [
 if IsObject(motoLabel)
     motoLabel.Value := mottos[Random(1, mottos.Length)]
 
-; ── Mini HUD Overlay — v1 Modern ──
+; ── Mini HUD Overlay — v2 ──
 HUD := Gui("+AlwaysOnTop -Caption +ToolWindow -Border -DPIScale +E0x80000 +E0x20", "HUD")
 HUD.BackColor := "08080f"
 HUD.MarginX := 0
 HUD.MarginY := 0
 
-; Üst accent çizgisi
-global hudAccentBar := HUD.Add("Text", "x0 y0 w130 h2 Background00ff88")
+; Accent çizgisi — soldan parlak, sağa doğru soluklaşan gradient (2 label ile simüle)
+HUD.Add("Text", "x0 y0 w148 h2 Background111122")
+global hudAccentBar  := HUD.Add("Text", "x0 y0 w80 h2 Background00ff88")
+global hudAccentFade := HUD.Add("Text", "x80 y0 w68 h2 Background003322")
 
-; Üst satır: MACRO label + durum dot + ON
+; Üst satır: MACRO (beyaz) | nokta + ON (yeşil/kırmızı)
 HUD.SetFont("s6 w700 cFFFFFF", "Segoe UI")
-HUD.Add("Text", "x7 y4 w50 h12 Background08080f", "MACRO")
+HUD.Add("Text", "x7 y4 w46 h12 Background08080f", "MACRO")
 HUD.SetFont("s6 w700 c00ff88", "Segoe UI")
-global hudStatus := HUD.Add("Text", "x60 y4 w63 h12 Background08080f Right", "● ON")
+global hudStatus := HUD.Add("Text", "x53 y4 w88 h12 Background08080f Right", "● ON")
 global hudDotLbl := hudStatus
 
-; Yatay ayırıcı
-HUD.Add("Text", "x7 y17 w116 h1 Background111122")
+; Yatay ayırıcı 1
+HUD.Add("Text", "x7 y17 w134 h1 Background111122")
 
-; Alt satır: ammo ikonu + isim + recoil
+; Orta satır: ammo ikonu + isim + recoil
 HUD.Add("Text", "x7 y20 w14 h14 Background0d1a12")
 HUD.SetFont("s6 w800 c00ff88", "Segoe UI")
 global hudAmmoIcon := HUD.Add("Text", "x7 y20 w14 h14 Background0d1a12 Center +0x200", "R")
 HUD.SetFont("s9 w700 c00ff88", "Segoe UI")
 global hudAmmo := HUD.Add("Text", "x24 y20 w40 h14 Background08080f", "5.56")
 HUD.SetFont("s10 w800 cFFFFFF", "Segoe UI")
-global hudRecoil := HUD.Add("Text", "x72 y19 w51 h14 Background08080f Right", "0")
+global hudRecoil := HUD.Add("Text", "x72 y19 w69 h14 Background08080f Right", "0")
 
 ; Recoil bar
-HUD.Add("Text", "x72 y34 w51 h2 Background111122")
-global hudRecoilBar := HUD.Add("Text", "x72 y34 w0 h2 Background00ff88")
+HUD.Add("Text", "x7 y35 w134 h2 Background111122")
+global hudRecoilBar := HUD.Add("Text", "x7 y35 w0 h2 Background00ff88")
+
+; Yatay ayırıcı 2
+HUD.Add("Text", "x7 y38 w134 h1 Background111122")
+
+; Lean satırı: EĞİLME (beyaz) | AÇIK/KAPALI
+HUD.SetFont("s6 w700 cFFFFFF", "Segoe UI")
+HUD.Add("Text", "x7 y41 w60 h12 Background08080f", "EĞİLME")
+HUD.SetFont("s6 w700 cff3355", "Segoe UI")
+global hudLeanStatus := HUD.Add("Text", "x67 y41 w74 h12 Background08080f Right", "KAPALI")
 
 screenW := SysGet(0)
-hudStartX := (hudX = -1) ? (screenW - 140) : hudX
-HUD.Show("w130 h38 x" hudStartX " y" hudY " NoActivate")
+hudStartX := (hudX = -1) ? (screenW - 158) : hudX
+HUD.Show("w148 h55 x" hudStartX " y" hudY " NoActivate")
 WinSetTransparent(hudOpacity, HUD)
 DllCall("dwmapi\DwmSetWindowAttribute", "ptr", HUD.Hwnd, "uint", 33, "int*", 2, "uint", 4)
 DllCall("dwmapi\DwmSetWindowAttribute", "ptr", HUD.Hwnd, "uint", 34, "int*", 0x08080f, "uint", 4)
 
-; Click-through: mouse olaylarını oyuna geçir
+; Click-through
 exStyle := DllCall("GetWindowLong", "ptr", HUD.Hwnd, "int", -20)
 DllCall("SetWindowLong", "ptr", HUD.Hwnd, "int", -20, "int", exStyle | 0x80000 | 0x20)
 
 ; Sürükleme alanı
-hudDrag := HUD.Add("Text", "x0 y0 w130 h38 BackgroundTrans")
+hudDrag := HUD.Add("Text", "x0 y0 w148 h55 BackgroundTrans")
 hudDrag.OnEvent("Click", DragHUD)
 
 ; Boyut değişince içeriği yeniden yerleştir
@@ -564,9 +577,13 @@ Down::
     shooting := true
     leanState := 0
     SetTimer(ApplyRecoil, 10)
-    SetTimer(AutoLean, 450)
-    if (leanOn)
-        AutoLean()
+    SetTimer(AutoLean, leanSpeed)
+    if (leanOn) {
+        if (leanDelay > 0)
+            SetTimer(() => (shooting && leanOn ? AutoLean() : ""), -leanDelay)
+        else
+            AutoLean()
+    }
 }
 
 ~LButton Up:: {
@@ -746,15 +763,19 @@ DoToggleMacro() {
 }
 
 UpdateStatus() {
-    global macroOn, statusDot, hudStatus, hudAccentBar
+    global macroOn, statusDot, hudStatus, hudAccentBar, hudAccentFade
     statusDot.SetFont(macroOn ? "c00ff88" : "cff3355")
     statusDot.Value := macroOn ? "● ONLINE" : "● OFFLINE"
     if IsObject(hudStatus) {
         hudStatus.SetFont(macroOn ? "s6 w700 c00ff88" : "s6 w700 cff3355")
         hudStatus.Value := macroOn ? "● ON" : "● OFF"
     }
-    if IsObject(hudAccentBar)
+    if IsObject(hudAccentBar) {
         hudAccentBar.Opt("Background" . (macroOn ? "00ff88" : "ff3355"))
+    }
+    if IsObject(hudAccentFade) {
+        hudAccentFade.Opt("Background" . (macroOn ? "003322" : "330011"))
+    }
 }
 
 ShowLockedNotify() {
@@ -1020,19 +1041,29 @@ MoveHUD(dx, dy) {
 }
 
 HudDotBlink() {
-    global hudStatus, macroOn
-    static blinkState := true
-    if !IsObject(hudStatus)
+    global hudDotLbl, macroOn
+    static phase := 0.0
+    if !IsObject(hudDotLbl)
         return
-    blinkState := !blinkState
-    if (macroOn)
-        hudStatus.SetFont(blinkState ? "s6 w700 c00ff88" : "s6 w700 c003322")
-    else
-        hudStatus.SetFont(blinkState ? "s6 w700 cff3355" : "s6 w700 c330011")
+    phase := Mod(phase + 0.08, 6.2832)
+    brightness := (Sin(phase) + 1) / 2
+    if (macroOn) {
+        g := Round(50 + brightness * 205)
+        hudDotLbl.SetFont("s6 w700 c" Format("00{:02X}00", g) . "")
+        ; Yeşil: 0, g, 0 — ama hex renk BGR değil RGB
+        r := 0 
+        b := Round(brightness * 136)
+        hudDotLbl.SetFont("s6 w700 c" Format("{:02X}{:02X}{:02X}", r, g, b))
+    } else {
+        r := Round(50 + brightness * 205)
+        g := 0
+        b := 0
+        hudDotLbl.SetFont("s6 w700 c" Format("{:02X}{:02X}{:02X}", r, g, b))
+    }
 }
 
 AutoLean() {
-    global shooting, macroOn, leanState, leanOn, leanKeyLeft, leanKeyRight
+    global shooting, macroOn, leanState, leanOn, leanKeyLeft, leanKeyRight, leanSpeed
     if (!shooting || !macroOn || !leanOn)
         return
     mouseKeys := ["LButton","RButton","MButton","XButton1","XButton2"]
@@ -1066,6 +1097,158 @@ AutoLean() {
         SendKey(leanKeyRight, false)
         leanState := 0
     }
+}
+
+OpenLeanSettings() {
+    global leanKeyLeft, leanKeyRight, leanSpeed, leanDelay, leanToggleKey
+    global leanLeftBtn, leanRightBtn, leanSpeedBtn, leanDelayBtn, leanHotkeyBtn, leanSettingsBtn
+
+    LG := Gui("+AlwaysOnTop -Caption +ToolWindow +Owner" . A_ScriptHwnd, "")
+    LG.BackColor := "0e0e0e"
+    LG.MarginX := 0
+    LG.MarginY := 0
+
+    ; Titlebar
+    LG.Add("Text", "x0 y0 w3 h36 Background4488ff")
+    LG.Add("Text", "x3 y0 w281 h36 Background0a0a0a")
+    LG.SetFont("s9 w700 c4488ff", "Consolas")
+    LG.Add("Text", "x12 y0 w240 h36 Background0a0a0a +0x200", "⚙ EĞİLME MODU AYARLARI")
+    LG.Add("Text", "x284 y0 w1 h36 Background222222")
+    LG.SetFont("s12 w700 c555555", "Consolas")
+    lgClose := LG.Add("Text", "x285 y0 w35 h36 Background0a0a0a Center +0x200", "×")
+    lgClose.OnEvent("Click", (*) => LG.Destroy())
+    LG.Add("Text", "x0 y36 w320 h1 Background222222")
+
+    LG.SetFont("s8 w600 cFFFFFF", "Consolas")
+    LG.Add("Text", "x10 y46 w140 Background0e0e0e", "Sol eğilme tuşu")
+    LG.SetFont("s8 w700 c4488ff", "Consolas")
+    lgLeft := LG.Add("Text", "x160 y44 w140 h22 Background141414 Center +0x200", StrUpper(leanKeyLeft))
+    lgLeft.OnEvent("Click", (*) => (AssignLeanKey("left"), lgLeft.Value := StrUpper(leanKeyLeft), UpdateLeanInfo()))
+
+    LG.SetFont("s8 w600 cFFFFFF", "Consolas")
+    LG.Add("Text", "x10 y72 w140 Background0e0e0e", "Sağ eğilme tuşu")
+    LG.SetFont("s8 w700 c4488ff", "Consolas")
+    lgRight := LG.Add("Text", "x160 y70 w140 h22 Background141414 Center +0x200", StrUpper(leanKeyRight))
+    lgRight.OnEvent("Click", (*) => (AssignLeanKey("right"), lgRight.Value := StrUpper(leanKeyRight), UpdateLeanInfo()))
+
+    LG.SetFont("s8 w600 cFFFFFF", "Consolas")
+    LG.Add("Text", "x10 y98 w140 Background0e0e0e", "Eğilme hızı")
+    LG.SetFont("s8 w700 c4488ff", "Consolas")
+    lgSpeed := LG.Add("Text", "x160 y96 w140 h22 Background141414 Center +0x200", leanSpeed "ms")
+    lgSpeed.OnEvent("Click", (*) => (AdjustLeanSetting("speed"), lgSpeed.Value := leanSpeed "ms", UpdateLeanInfo()))
+
+    LG.SetFont("s8 w600 cFFFFFF", "Consolas")
+    LG.Add("Text", "x10 y124 w140 Background0e0e0e", "Başlama gecikmesi")
+    LG.SetFont("s8 w700 c4488ff", "Consolas")
+    lgDelay := LG.Add("Text", "x160 y122 w140 h22 Background141414 Center +0x200", DelayTxt())
+    lgDelay.OnEvent("Click", (*) => (AdjustLeanSetting("delay"), lgDelay.Value := DelayTxt(), UpdateLeanInfo()))
+
+    LG.SetFont("s8 w600 cFFFFFF", "Consolas")
+    LG.Add("Text", "x10 y150 w140 Background0e0e0e", "Açma/kapama tuşu")
+    LG.SetFont("s8 w700 c4488ff", "Consolas")
+    lgHotkey := LG.Add("Text", "x160 y148 w140 h22 Background141414 Center +0x200", leanToggleKey = "" ? "YOK" : StrUpper(leanToggleKey))
+    lgHotkey.OnEvent("Click", (*) => (AssignLeanHotkey(), lgHotkey.Value := leanToggleKey = "" ? "YOK" : StrUpper(leanToggleKey), UpdateLeanInfo()))
+
+    LG.Add("Text", "x0 y178 w320 h1 Background222222")
+    LG.SetFont("s6 c333333", "Consolas")
+    LG.Add("Text", "x0 y182 w320 Background0e0e0e Center", "Hız ve gecikme butonlarına tıklayarak değer döngüsü yapılır.")
+
+    screenW := SysGet(0)
+    screenH := SysGet(1)
+    LG.Show("w320 h196 x" (screenW-320)//2 " y" (screenH-196)//2)
+    DllCall("dwmapi\DwmSetWindowAttribute", "ptr", LG.Hwnd, "uint", 33, "int*", 2, "uint", 4)
+    DllCall("dwmapi\DwmSetWindowAttribute", "ptr", LG.Hwnd, "uint", 34, "int*", 0x0e0e0e, "uint", 4)
+
+    UpdateLeanInfo() {
+        ; Ana GUI'deki özet satırı güncelle
+        if IsObject(leanSettingsBtn) {
+            delayTxt := (leanDelay = 0) ? "0" : (leanDelay < 1000 ? leanDelay "ms" : leanDelay//1000 "sn")
+            hotkeyTxt := (leanToggleKey = "") ? "YOK" : StrUpper(leanToggleKey)
+            leanSettingsBtn.Value := "SOL:" StrUpper(leanKeyLeft) " SAĞ:" StrUpper(leanKeyRight) " HIZ:" leanSpeed "ms"
+        }
+    }
+}
+
+AdjustLeanSetting(type) {
+    global leanSpeed, leanDelay, leanSpeedBtn, leanDelayBtn
+
+    if (type = "speed") {
+        ; Hız seçenekleri: 200ms, 300ms, 450ms, 600ms, 800ms, 1000ms
+        speeds := [200, 300, 450, 600, 800, 1000]
+        cur := leanSpeed
+        next := speeds[1]
+        for i, s in speeds {
+            if (s = cur && i < speeds.Length) {
+                next := speeds[i+1]
+                break
+            }
+        }
+        leanSpeed := next
+        SetTimer(AutoLean, leanSpeed)
+        leanSpeedBtn.Value := next "ms"
+    } else {
+        ; Gecikme seçenekleri: 0, 500ms, 1sn, 2sn, 3sn
+        delays := [0, 500, 1000, 2000, 3000]
+        cur := leanDelay
+        next := delays[1]
+        for i, d in delays {
+            if (d = cur && i < delays.Length) {
+                next := delays[i+1]
+                break
+            }
+        }
+        leanDelay := next
+        if (next = 0)
+            leanDelayBtn.Value := "0sn"
+        else if (next < 1000)
+            leanDelayBtn.Value := next . "ms"
+        else
+            leanDelayBtn.Value := (next//1000) . "sn"
+    }
+}
+
+DelayTxt() {
+    global leanDelay
+    if (leanDelay = 0)
+        return "0sn"
+    else if (leanDelay < 1000)
+        return leanDelay . "ms"
+    else
+        return (leanDelay//1000) . "sn"
+}
+
+AssignLeanHotkey() {
+    global leanToggleKey, leanHotkeyBtn
+
+    aGui := Gui("+AlwaysOnTop -Caption +ToolWindow +Border", "")
+    aGui.BackColor := "0e0e0e"
+    aGui.SetFont("s8 w700 c4488ff", "Consolas")
+    aGui.Add("Text", "x10 y10 w200 Center", "Eğilme açma/kapama tuşu")
+    aGui.SetFont("s7 c555555", "Consolas")
+    aGui.Add("Text", "x10 y26 w200 Center", "Bir tuşa bas — ESC iptal")
+    screenW := SysGet(0)
+    screenH := SysGet(1)
+    aGui.Show("w220 h50 x" (screenW-220)//2 " y" (screenH-50)//2 " NoActivate")
+    Sleep(200)
+
+    ih := InputHook("L1 T5")
+    ih.KeyOpt("{All}", "E")
+    ih.Start()
+    ih.Wait()
+    pressedKey := ih.EndKey
+    aGui.Destroy()
+
+    if (pressedKey = "Escape" || pressedKey = "")
+        return
+
+    ; Eski hotkey'i kaldır
+    if (leanToggleKey != "") {
+        try Hotkey(leanToggleKey, "Off")
+    }
+
+    leanToggleKey := pressedKey
+    ; Yeni hotkey ata
+    Hotkey(pressedKey, (*) => ToggleLean(), "On")
 }
 
 AssignLeanKey(side) {
@@ -1133,11 +1316,15 @@ AssignLeanKey(side) {
 }
 
 ToggleLean() {
-    global leanOn, leanBtn
+    global leanOn, leanBtn, hudLeanStatus
     leanOn := !leanOn
     leanBtn.Value := leanOn ? "✔ AKTİF" : "✘ PASİF"
     leanBtn.SetFont(leanOn ? "c00ff88" : "cff3355")
     leanBtn.Opt("Background" . (leanOn ? "001a0a" : "1a0008"))
+    if IsObject(hudLeanStatus) {
+        hudLeanStatus.SetFont(leanOn ? "s6 w700 c00ff88" : "s6 w700 cff3355")
+        hudLeanStatus.Value := leanOn ? "AÇIK" : "KAPALI"
+    }
 }
 
 DragWin(*) {
