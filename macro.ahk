@@ -49,7 +49,7 @@ global updateApiUrl := "https://api.github.com/repos/berkaycimh/macro/releases/l
 global updateExeUrl := "https://github.com/berkaycimh/macro/releases/latest/download/PSP.exe"
 
 ; Versiyon — bu değer her zaman derlenen exe ile eşleşmeli
-global currentVersion := "2.0"
+global currentVersion := "2.1"
 
 ; Şifre ekranı kaldırıldı
 
@@ -461,10 +461,9 @@ HUD.BackColor := "08080f"
 HUD.MarginX := 0
 HUD.MarginY := 0
 
-; Accent çizgisi — soldan parlak, sağa doğru soluklaşan gradient (2 label ile simüle)
+; Accent çizgisi — tam genişlik, macro durumuna göre renk
 HUD.Add("Text", "x0 y0 w148 h2 Background111122")
-global hudAccentBar  := HUD.Add("Text", "x0 y0 w80 h2 Background00ff88")
-global hudAccentFade := HUD.Add("Text", "x80 y0 w68 h2 Background003322")
+global hudAccentBar := HUD.Add("Text", "x0 y0 w148 h2 Backgroundff3355")
 
 ; Üst satır: MACRO (beyaz) | nokta + ON (yeşil/kırmızı)
 HUD.SetFont("s6 w700 cFFFFFF", "Segoe UI")
@@ -763,18 +762,15 @@ DoToggleMacro() {
 }
 
 UpdateStatus() {
-    global macroOn, statusDot, hudStatus, hudAccentBar, hudAccentFade
+    global macroOn, statusDot, hudStatus, hudAccentBar
     statusDot.SetFont(macroOn ? "c00ff88" : "cff3355")
     statusDot.Value := macroOn ? "● ONLINE" : "● OFFLINE"
     if IsObject(hudStatus) {
         hudStatus.SetFont(macroOn ? "s6 w700 c00ff88" : "s6 w700 cff3355")
         hudStatus.Value := macroOn ? "● ON" : "● OFF"
     }
-    if IsObject(hudAccentBar) {
+    try {
         hudAccentBar.Opt("Background" . (macroOn ? "00ff88" : "ff3355"))
-    }
-    if IsObject(hudAccentFade) {
-        hudAccentFade.Opt("Background" . (macroOn ? "003322" : "330011"))
     }
 }
 
@@ -1041,17 +1037,21 @@ MoveHUD(dx, dy) {
 }
 
 HudDotBlink() {
-    global hudDotLbl, macroOn
+    global hudDotLbl, hudAccentBar, macroOn
     static phase := 0.0
     if !IsObject(hudDotLbl)
         return
+    ; Accent çizgisi rengini sürekli güncelle
+    try {
+        hudAccentBar.Opt("Background" . (macroOn ? "00ff88" : "ff3355"))
+        hudAccentBar.Redraw()
+    }
+    ; Nokta nefes animasyonu
     phase := Mod(phase + 0.08, 6.2832)
     brightness := (Sin(phase) + 1) / 2
     if (macroOn) {
         g := Round(50 + brightness * 205)
-        hudDotLbl.SetFont("s6 w700 c" Format("00{:02X}00", g) . "")
-        ; Yeşil: 0, g, 0 — ama hex renk BGR değil RGB
-        r := 0 
+        r := 0
         b := Round(brightness * 136)
         hudDotLbl.SetFont("s6 w700 c" Format("{:02X}{:02X}{:02X}", r, g, b))
     } else {
