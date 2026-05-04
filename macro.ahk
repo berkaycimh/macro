@@ -49,7 +49,7 @@ global updateApiUrl := "https://api.github.com/repos/berkaycimh/macro/releases/l
 global updateExeUrl := "https://github.com/berkaycimh/macro/releases/latest/download/PSP.exe"
 
 ; Versiyon — bu değer her zaman derlenen exe ile eşleşmeli
-global currentVersion := "2.1"
+global currentVersion := "2.2"
 
 ; Şifre ekranı kaldırıldı
 
@@ -96,9 +96,10 @@ Sleep(500)
 
 ; Güncelleme flag kontrolü — döngüyü önle
 if FileExist(A_ScriptDir "\updated.flag") {
+    flagVer := FileRead(A_ScriptDir "\updated.flag")
     FileDelete(A_ScriptDir "\updated.flag")
     splashStatus.SetFont("c00ff88")
-    splashStatus.Value := "✔ Güncellendi — v" currentVersion
+    splashStatus.Value := "✔ Güncellendi — v" flagVer
     Sleep(1500)
     splashGui.Destroy()
     goto SkipUpdate
@@ -121,6 +122,13 @@ try {
         splashStatus.SetFont("cffcc00")
         splashStatus.Value := "↓ v" latestVer " indiriliyor..."
         Sleep(800)
+
+        ; Changelog body'sini parse et
+        changelogBody := ""
+        if RegExMatch(apiResponse, '"body"\s*:\s*"([^"]*)"', &bm)
+            changelogBody := StrReplace(bm[1], "\r\n", "`n")
+        if RegExMatch(apiResponse, '"body"\s*:\s*null', )
+            changelogBody := ""
 
         ; API yanıtından browser_download_url'yi parse et — redirect yok, direkt link
         dlUrl := ""
@@ -146,8 +154,8 @@ try {
             splashStatus.Value := "Yükleniyor, yeniden başlatılıyor..."
             Sleep(500)
             oldExe := A_ScriptFullPath
-            ; Flag dosyası bırak — yeni EXE güncelleme döngüsüne girmesin
-            FileAppend("updated", A_ScriptDir "\updated.flag")
+            ; Flag dosyasına yeni versiyonu yaz — döngüyü önle
+            FileAppend(latestVer, A_ScriptDir "\updated.flag")
             cmd := 'cmd /c ping -n 2 127.0.0.1 >nul & move /y "' tmpExe '" "' oldExe '" & start "" "' oldExe '"'
             Run(cmd,, "Hide")
             splashGui.Destroy()
@@ -242,8 +250,11 @@ statusDot := G.Add("Text", "x10 y53 w90 Background0a0a0a", "● OFFLINE")
 G.Add("Text", "x104 y52 w1 h14 Background222222")
 G.SetFont("s10 w800 cffb300", "Consolas")
 G.Add("Text", "x110 y49 w60 Background0a0a0a", "PUBG")
+G.SetFont("s7 w700 c00ff88", "Consolas")
+global changelogLinkBtn := G.Add("Text", "x172 y53 w80 Background0a0a0a", "YENİLİKLER")
+changelogLinkBtn.OnEvent("Click", (*) => ShowChangelog())
 G.SetFont("s7 c4488ff", "Consolas")
-global motoLabel := G.Add("Text", "x160 y53 w230 Background0a0a0a Right", "")
+global motoLabel := G.Add("Text", "x255 y53 w135 Background0a0a0a Right", "")
 
 ; ── Silah Seçimi (y=73) ──
 G.Add("Text", "x0 y73 w400 h1 Background222222")
@@ -346,61 +357,77 @@ btnUp.OnEvent("Click",    (*) => MoveHUD(0, -10))
 btnLeft.OnEvent("Click",  (*) => MoveHUD(-10, 0))
 btnDown.OnEvent("Click",  (*) => MoveHUD(0, 10))
 btnRight.OnEvent("Click", (*) => MoveHUD(10, 0))
+
+; Basılı tutunca sürekli hareket
+global hudMoveDir := ""
+OnMessage(0x0201, HudBtnMouseDown)
+OnMessage(0x0202, HudBtnMouseUp)
 G.Add("Text", "x290 y275 w1 h42 Background222222")
 G.SetFont("s9 w700 c00ff88", "Consolas")
 global hudToggleBtn := G.Add("Text", "x291 y275 w109 h42 Background001a0a Center +0x200", "AÇIK")
 hudToggleBtn.OnEvent("Click", (*) => ToggleHUD())
 
-; ── Kaydet (y=317) ──
+; ── HUD Monitör (y=317) ──
 G.Add("Text", "x0 y317 w400 h1 Background222222")
 G.Add("Text", "x0 y318 w400 h42 Background0e0e0e")
 G.SetFont("s10 w600 ccccccc", "Consolas")
-G.Add("Text", "x14 y326 w200 Background0e0e0e", "Ayarları Kaydet")
+G.Add("Text", "x14 y326 w180 Background0e0e0e", "HUD Monitörü")
 G.SetFont("s7 c555555", "Consolas")
-global saveStatus := G.Add("Text", "x14 y340 w200 Background0e0e0e", "✔ otomatik kaydediliyor")
+G.Add("Text", "x14 y340 w180 Background0e0e0e", "HUD'un gösterileceği ekran")
 G.Add("Text", "x290 y318 w1 h42 Background222222")
 G.SetFont("s9 w700 c4488ff", "Consolas")
-saveBtn := G.Add("Text", "x291 y318 w109 h42 Background001020 Center +0x200", "KAYDET")
-saveBtn.OnEvent("Click", (*) => DoSave())
+global hudMonBtn := G.Add("Text", "x291 y318 w109 h42 Background001020 Center +0x200", "MON 1")
+hudMonBtn.OnEvent("Click", (*) => CycleHudMonitor())
 
-; ── Q/E Eğilme Modu (y=360) ──
+; ── Kaydet (y=360) ──
 G.Add("Text", "x0 y360 w400 h1 Background222222")
 G.Add("Text", "x0 y361 w400 h42 Background0e0e0e")
-G.SetFont("s9 w600 ccccccc", "Consolas")
-G.Add("Text", "x14 y365 w270 Background0e0e0e", "Eğilme Modu")
-G.SetFont("s6 c555555", "Consolas")
-G.Add("Text", "x14 y378 w270 Background0e0e0e", "SOL:Q  SAĞ:E  HIZ:450ms  GECİK:0  TUŞU:YOK")
-; Ayar butonu
-G.SetFont("s7 w700 c4488ff", "Consolas")
-global leanSettingsBtn := G.Add("Text", "x14 y390 w60 h12 Background0e0e0e", "⚙ Ayarla")
-leanSettingsBtn.OnEvent("Click", (*) => OpenLeanSettings())
-G.Add("Text", "x290 y361 w1 h42 Background222222")
-G.SetFont("s9 w700 cff3355", "Consolas")
-global leanBtn := G.Add("Text", "x291 y361 w109 h42 Background1a0008 Center +0x200", "✘ PASİF")
-leanBtn.OnEvent("Click", (*) => ToggleLean())
+G.SetFont("s10 w600 ccccccc", "Consolas")
+G.Add("Text", "x14 y369 w200 Background0e0e0e", "Ayarları Kaydet")
+G.SetFont("s7 c555555", "Consolas")
+global saveStatus := G.Add("Text", "x14 y383 w200 Background0e0e0e", "✔ otomatik kaydediliyor")
+G.Add("Text", "x290 y360 w1 h42 Background222222")
+G.SetFont("s9 w700 c4488ff", "Consolas")
+saveBtn := G.Add("Text", "x291 y360 w109 h42 Background001020 Center +0x200", "KAYDET")
+saveBtn.OnEvent("Click", (*) => DoSave())
 
-; ── Önerilen Ayarlar (y=403) ──
+; ── Q/E Eğilme Modu (y=403) ──
 G.Add("Text", "x0 y403 w400 h1 Background222222")
 G.Add("Text", "x0 y404 w400 h42 Background0e0e0e")
-G.SetFont("s10 w600 cffb300", "Consolas")
-G.Add("Text", "x14 y411 w200 Background0e0e0e", "Önerilen Ayarlar")
-G.SetFont("s7 c555555", "Consolas")
-G.Add("Text", "x14 y425 w200 Background0e0e0e", "Hazır recoil profilleri")
+G.SetFont("s9 w600 ccccccc", "Consolas")
+G.Add("Text", "x14 y408 w270 Background0e0e0e", "Eğilme Modu")
+G.SetFont("s6 c555555", "Consolas")
+G.Add("Text", "x14 y421 w270 Background0e0e0e", "SOL:Q  SAĞ:E  HIZ:450ms  GECİK:0  TUŞU:YOK")
+G.SetFont("s7 w700 c4488ff", "Consolas")
+global leanSettingsBtn := G.Add("Text", "x14 y433 w60 h12 Background0e0e0e", "⚙ Ayarla")
+leanSettingsBtn.OnEvent("Click", (*) => OpenLeanSettings())
 G.Add("Text", "x290 y403 w1 h42 Background222222")
+G.SetFont("s9 w700 cff3355", "Consolas")
+global leanBtn := G.Add("Text", "x291 y403 w109 h42 Background1a0008 Center +0x200", "✘ PASİF")
+leanBtn.OnEvent("Click", (*) => ToggleLean())
+
+; ── Önerilen Ayarlar (y=446) ──
+G.Add("Text", "x0 y446 w400 h1 Background222222")
+G.Add("Text", "x0 y447 w400 h42 Background0e0e0e")
+G.SetFont("s10 w600 cffb300", "Consolas")
+G.Add("Text", "x14 y454 w200 Background0e0e0e", "Önerilen Ayarlar")
+G.SetFont("s7 c555555", "Consolas")
+G.Add("Text", "x14 y468 w200 Background0e0e0e", "Hazır recoil profilleri")
+G.Add("Text", "x290 y446 w1 h42 Background222222")
 G.SetFont("s9 w700 cffb300", "Consolas")
-presetBtn := G.Add("Text", "x291 y403 w109 h42 Background1a1000 Center +0x200", "⚙ ÖNERİ")
+presetBtn := G.Add("Text", "x291 y446 w109 h42 Background1a1000 Center +0x200", "⚙ ÖNERİ")
 presetBtn.OnEvent("Click", (*) => OpenPresetGui())
 
-; ── Footer (y=445) ──
-G.Add("Text", "x0 y445 w400 h1 Background222222")
-G.Add("Text", "x0 y446 w400 h28 Background0a0a0a")
+; ── Footer (y=488) ──
+G.Add("Text", "x0 y488 w400 h1 Background222222")
+G.Add("Text", "x0 y489 w400 h28 Background0a0a0a")
 G.SetFont("s8 w800 cFFFFFF", "Consolas")
-global rgbLabel := G.Add("Text", "x14 y455 w100 Background0a0a0a", "berkaycimh")
+global rgbLabel := G.Add("Text", "x14 y498 w100 Background0a0a0a", "berkaycimh")
 G.SetFont("s7 c333333", "Consolas")
-global verLabel := G.Add("Text", "x160 y456 w80 Background0a0a0a Center", "v" currentVersion)
+global verLabel := G.Add("Text", "x160 y499 w80 Background0a0a0a Center", "v" currentVersion)
 G.SetFont("s7 c00ff88", "Consolas")
-global ramLabel := G.Add("Text", "x280 y456 w100 Background0a0a0a Right", "RAM: --")
-G.Show("w400 h474")
+global ramLabel := G.Add("Text", "x280 y499 w100 Background0a0a0a Right", "RAM: --")
+G.Show("w400 h517")
 
 ; Başlangıç animasyonu — yukarıdan aşağı kayarak gel
 screenW := SysGet(0)
@@ -1327,8 +1354,130 @@ ToggleLean() {
     }
 }
 
+CycleHudMonitor() {
+    global HUD, hudMonBtn, hudMonLabel
+    ; Mevcut monitör sayısını al
+    monCount := SysGet(80)  ; SM_CMONITORS
+    if (monCount < 2) {
+        hudMonLabel.Value := "Tek ekran"
+        return
+    }
+    ; Mevcut HUD pozisyonunu al
+    WinGetPos(&hx, &hy,,, HUD)
+    ; Hangi monitörde olduğunu bul
+    curMon := 1
+    loop monCount {
+        mLeft  := SysGet(76 + (A_Index-1)*4)   ; SM_XVIRTUALSCREEN benzeri
+        ; MonitorGet ile daha güvenilir
+    }
+    ; MonitorGet ile tüm monitörleri tara
+    loop monCount {
+        MonitorGet(A_Index, &mL, &mT, &mR, &mB)
+        if (hx >= mL && hx < mR && hy >= mT && hy < mB) {
+            curMon := A_Index
+            break
+        }
+    }
+    ; Bir sonraki monitöre geç
+    nextMon := Mod(curMon, monCount) + 1
+    MonitorGet(nextMon, &nL, &nT, &nR, &nB)
+    ; HUD'u yeni monitörün sağ üstüne taşı
+    newX := nR - 158
+    newY := nT + 10
+    HUD.Move(newX, newY)
+    hudMonBtn.Value := "MON " nextMon
+    AutoSave()
+}
+
+ShowChangelogPopup(ver, body) {
+    CL := Gui("+AlwaysOnTop -Caption +ToolWindow +Owner" . A_ScriptHwnd, "")
+    CL.BackColor := "0e0e0e"
+    CL.MarginX := 0
+    CL.MarginY := 0
+    ; Titlebar
+    CL.Add("Text", "x0 y0 w3 h36 Backgroundffb300")
+    CL.Add("Text", "x3 y0 w281 h36 Background0a0a0a")
+    CL.SetFont("s9 w700 cffb300", "Consolas")
+    CL.Add("Text", "x12 y0 w240 h36 Background0a0a0a +0x200", "🎉 v" ver " — YENİLİKLER")
+    CL.Add("Text", "x284 y0 w1 h36 Background222222")
+    CL.SetFont("s12 w700 c555555", "Consolas")
+    clClose := CL.Add("Text", "x285 y0 w35 h36 Background0a0a0a Center +0x200", "×")
+    clClose.OnEvent("Click", (*) => CL.Destroy())
+    CL.Add("Text", "x0 y36 w320 h1 Background222222")
+    ; İçerik
+    CL.SetFont("s8 cFFFFFF", "Consolas")
+    ; Body'yi satırlara böl ve göster
+    lines := StrSplit(body, "`n")
+    yPos := 46
+    for line in lines {
+        if (Trim(line) = "")
+            continue
+        CL.SetFont("s8 cFFFFFF", "Consolas")
+        CL.Add("Text", "x10 y" yPos " w300 Background0e0e0e", Trim(line))
+        yPos += 16
+    }
+    if (yPos < 80)
+        yPos := 80
+    CL.Add("Text", "x0 y" yPos " w320 h1 Background222222")
+    CL.SetFont("s7 c333333", "Consolas")
+    CL.Add("Text", "x0 y" (yPos+4) " w320 Background0e0e0e Center", "Kapat")
+    totalH := yPos + 22
+    screenW := SysGet(0)
+    screenH := SysGet(1)
+    CL.Show("w320 h" totalH " x" (screenW-320)//2 " y" (screenH-totalH)//2)
+    DllCall("dwmapi\DwmSetWindowAttribute", "ptr", CL.Hwnd, "uint", 33, "int*", 2, "uint", 4)
+    DllCall("dwmapi\DwmSetWindowAttribute", "ptr", CL.Hwnd, "uint", 34, "int*", 0x0e0e0e, "uint", 4)
+}
+
 DragWin(*) {
     PostMessage(0xA1, 2, 0, G)
+}
+
+ShowChangelog() {
+    changelog := "v" . currentVersion . " — Güncel Sürüm`n`n"
+    changelog .= "• Q/E Eğilme Modu — tuş atama, hız, gecikme ayarı`n"
+    changelog .= "• HUD Monitör Seçici — çoklu ekran desteği`n"
+    changelog .= "• HUD yön butonları basılı tutunca sürekli hareket`n"
+    changelog .= "• Lean durumu HUD'da gösteriliyor`n"
+    changelog .= "• Accent çizgisi macro durumuna göre renk değiştiriyor`n"
+    changelog .= "• Güncelleme döngüsü düzeltildi`n"
+    changelog .= "• Önerilen ayarlar popup'ı`n"
+    ShowChangelogPopup(currentVersion, changelog)
+}
+
+HudBtnMouseDown(wParam, lParam, msg, hwnd) {
+    global hudMoveDir, btnUp, btnLeft, btnDown, btnRight
+    if (hwnd = btnUp.Hwnd) {
+        hudMoveDir := "up"
+    } else if (hwnd = btnLeft.Hwnd) {
+        hudMoveDir := "left"
+    } else if (hwnd = btnDown.Hwnd) {
+        hudMoveDir := "down"
+    } else if (hwnd = btnRight.Hwnd) {
+        hudMoveDir := "right"
+    } else {
+        return
+    }
+    SetTimer(HudMoveRepeat, 80)
+}
+
+HudBtnMouseUp(wParam, lParam, msg, hwnd) {
+    global hudMoveDir
+    hudMoveDir := ""
+    SetTimer(HudMoveRepeat, 0)
+}
+
+HudMoveRepeat() {
+    global hudMoveDir
+    if (hudMoveDir = "up") {
+        MoveHUD(0, -5)
+    } else if (hudMoveDir = "left") {
+        MoveHUD(-5, 0)
+    } else if (hudMoveDir = "down") {
+        MoveHUD(0, 5)
+    } else if (hudMoveDir = "right") {
+        MoveHUD(5, 0)
+    }
 }
 
 ; ─── Önerilen Ayarlar Popup ────────────────────────────────────────────────
