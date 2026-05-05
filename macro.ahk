@@ -49,7 +49,7 @@ global updateApiUrl := "https://api.github.com/repos/berkaycimh/macro/releases/l
 global updateExeUrl := "https://github.com/berkaycimh/macro/releases/latest/download/PSP.exe"
 
 ; Versiyon — bu değer her zaman derlenen exe ile eşleşmeli
-global currentVersion := "2.2"
+global currentVersion := "2.3"
 
 ; Şifre ekranı kaldırıldı
 
@@ -75,7 +75,7 @@ splashGui.MarginX := 0
 splashGui.MarginY := 0
 splashGui.Add("Text", "x0 y0 w300 h2 Background00ff88")
 splashGui.SetFont("s10 w800 cFFFFFF", "Consolas")
-splashGui.Add("Text", "x0 y12 w300 Background0e0e0e Center", "405-B / 406-X")
+splashGui.Add("Text", "x0 y12 w300 Background0e0e0e Center", "LastCircle")
 splashGui.SetFont("s8 w600 c00ff88", "Consolas")
 splashGui.Add("Text", "x0 y32 w300 Background0e0e0e Center", "Güncelleme kontrol ediliyor...")
 splashGui.SetFont("s7 c555555", "Consolas")
@@ -185,13 +185,13 @@ G.Add("Text", "x4 y0 w396 h44 Background0a0a0a")
 G.SetFont("s7 w700 c00ff88", "Consolas")
 global sysBadge := G.Add("Text", "x14 y4 w50 h36 Background003322 Center +0x200", "SYS v" currentVersion)
 G.SetFont("s10 w800 cFFFFFF", "Consolas")
-G.Add("Text", "x70 y8 w185 Background0a0a0a", "405-B / 406-X")
+G.Add("Text", "x70 y8 w185 Background0a0a0a", "LastCircle")
 G.Add("Text", "x70 y24 w185 Background0a0a0a", "Kullanımı riskli değildir")
 G.Add("Text", "x260 y0 w1 h44 Background222222")
 G.SetFont("s6 ccccccc", "Consolas")
-G.Add("Text", "x262 y6 w76 h14 Background0a0a0a Center", "UPTIME")
+G.Add("Text", "x262 y6 w74 h14 Background0a0a0a Center", "UPTIME")
 G.SetFont("s11 w700 c00ff88", "Consolas")
-global uptimeLabel := G.Add("Text", "x262 y20 w76 h20 Background0a0a0a Center", "00:00")
+global uptimeLabel := G.Add("Text", "x262 y20 w74 h20 Background0a0a0a Center", "00:00")
 G.Add("Text", "x334 y0 w1 h44 Background222222")
 G.SetFont("s12 w700 c555555", "Consolas")
 minBtn   := G.Add("Text", "x335 y0 w36 h44 Background0a0a0a Center +0x200", "─")
@@ -340,94 +340,63 @@ toggleMacro.OnEvent("Click", (*) => DoToggleMacro())
 G.Add("Text", "x0 y274 w400 h1 Background222222")
 G.Add("Text", "x0 y275 w400 h42 Background0e0e0e")
 G.SetFont("s10 w600 ccccccc", "Consolas")
-G.Add("Text", "x14 y283 w80 Background0e0e0e", "Mini HUD")
-G.Add("Text", "x100 y275 w1 h42 Background222222")
-G.SetFont("s9 w700 cffffff", "Consolas")
-btnUp    := G.Add("Text", "x106 y282 w24 h28 Background1a1a1a Center +0x200", "▲")
-btnLeft  := G.Add("Text", "x132 y282 w24 h28 Background1a1a1a Center +0x200", "◄")
-btnDown  := G.Add("Text", "x158 y282 w24 h28 Background1a1a1a Center +0x200", "▼")
-btnRight := G.Add("Text", "x184 y282 w24 h28 Background1a1a1a Center +0x200", "►")
-btnUp.SetFont("s9 w700 cffffff", "Consolas")
-btnLeft.SetFont("s9 w700 cffffff", "Consolas")
-btnDown.SetFont("s9 w700 cffffff", "Consolas")
-btnRight.SetFont("s9 w700 cffffff", "Consolas")
-G.SetFont("s7 c333333", "Consolas")
-global hudPosLabel := G.Add("Text", "x212 y287 w70 Background0e0e0e", "")
-btnUp.OnEvent("Click",    (*) => MoveHUD(0, -10))
-btnLeft.OnEvent("Click",  (*) => MoveHUD(-10, 0))
-btnDown.OnEvent("Click",  (*) => MoveHUD(0, 10))
-btnRight.OnEvent("Click", (*) => MoveHUD(10, 0))
-
-; Basılı tutunca sürekli hareket
-global hudMoveDir := ""
-OnMessage(0x0201, HudBtnMouseDown)
-OnMessage(0x0202, HudBtnMouseUp)
+G.Add("Text", "x14 y283 w180 Background0e0e0e", "Mini HUD")
+G.SetFont("s7 c555555", "Consolas")
+G.Add("Text", "x14 y297 w180 Background0e0e0e", "Konum, görünüm ve monitör")
 G.Add("Text", "x290 y275 w1 h42 Background222222")
-G.SetFont("s9 w700 c00ff88", "Consolas")
-global hudToggleBtn := G.Add("Text", "x291 y275 w109 h42 Background001a0a Center +0x200", "AÇIK")
-hudToggleBtn.OnEvent("Click", (*) => ToggleHUD())
+G.SetFont("s9 w700 c4488ff", "Consolas")
+hudSettingsBtn := G.Add("Text", "x291 y275 w109 h42 Background001020 Center +0x200", "⚙ AYARLAR")
+hudSettingsBtn.OnEvent("Click", (*) => OpenHudSettingsGui())
 
-; ── HUD Monitör (y=317) ──
+; ── Kaydet (y=317) ──
 G.Add("Text", "x0 y317 w400 h1 Background222222")
 G.Add("Text", "x0 y318 w400 h42 Background0e0e0e")
 G.SetFont("s10 w600 ccccccc", "Consolas")
-G.Add("Text", "x14 y326 w180 Background0e0e0e", "HUD Monitörü")
+G.Add("Text", "x14 y326 w200 Background0e0e0e", "Ayarları Kaydet")
 G.SetFont("s7 c555555", "Consolas")
-G.Add("Text", "x14 y340 w180 Background0e0e0e", "HUD'un gösterileceği ekran")
-G.Add("Text", "x290 y318 w1 h42 Background222222")
+global saveStatus := G.Add("Text", "x14 y340 w200 Background0e0e0e", "✔ otomatik kaydediliyor")
+G.Add("Text", "x290 y317 w1 h42 Background222222")
 G.SetFont("s9 w700 c4488ff", "Consolas")
-global hudMonBtn := G.Add("Text", "x291 y318 w109 h42 Background001020 Center +0x200", "MON 1")
-hudMonBtn.OnEvent("Click", (*) => CycleHudMonitor())
-
-; ── Kaydet (y=360) ──
-G.Add("Text", "x0 y360 w400 h1 Background222222")
-G.Add("Text", "x0 y361 w400 h42 Background0e0e0e")
-G.SetFont("s10 w600 ccccccc", "Consolas")
-G.Add("Text", "x14 y369 w200 Background0e0e0e", "Ayarları Kaydet")
-G.SetFont("s7 c555555", "Consolas")
-global saveStatus := G.Add("Text", "x14 y383 w200 Background0e0e0e", "✔ otomatik kaydediliyor")
-G.Add("Text", "x290 y360 w1 h42 Background222222")
-G.SetFont("s9 w700 c4488ff", "Consolas")
-saveBtn := G.Add("Text", "x291 y360 w109 h42 Background001020 Center +0x200", "KAYDET")
+saveBtn := G.Add("Text", "x291 y317 w109 h42 Background001020 Center +0x200", "KAYDET")
 saveBtn.OnEvent("Click", (*) => DoSave())
 
-; ── Q/E Eğilme Modu (y=403) ──
-G.Add("Text", "x0 y403 w400 h1 Background222222")
-G.Add("Text", "x0 y404 w400 h42 Background0e0e0e")
+; ── Q/E Eğilme Modu (y=360) ──
+G.Add("Text", "x0 y360 w400 h1 Background222222")
+G.Add("Text", "x0 y361 w400 h42 Background0e0e0e")
 G.SetFont("s9 w600 ccccccc", "Consolas")
-G.Add("Text", "x14 y408 w270 Background0e0e0e", "Eğilme Modu")
+G.Add("Text", "x14 y365 w270 Background0e0e0e", "Eğilme Modu")
 G.SetFont("s6 c555555", "Consolas")
-G.Add("Text", "x14 y421 w270 Background0e0e0e", "SOL:Q  SAĞ:E  HIZ:450ms  GECİK:0  TUŞU:YOK")
+G.Add("Text", "x14 y378 w270 Background0e0e0e", "SOL:Q  SAĞ:E  HIZ:450ms  GECİK:0  TUŞU:YOK")
 G.SetFont("s7 w700 c4488ff", "Consolas")
-global leanSettingsBtn := G.Add("Text", "x14 y433 w60 h12 Background0e0e0e", "⚙ Ayarla")
+global leanSettingsBtn := G.Add("Text", "x14 y390 w60 h12 Background0e0e0e", "⚙ Ayarla")
 leanSettingsBtn.OnEvent("Click", (*) => OpenLeanSettings())
-G.Add("Text", "x290 y403 w1 h42 Background222222")
+G.Add("Text", "x290 y360 w1 h42 Background222222")
 G.SetFont("s9 w700 cff3355", "Consolas")
-global leanBtn := G.Add("Text", "x291 y403 w109 h42 Background1a0008 Center +0x200", "✘ PASİF")
+global leanBtn := G.Add("Text", "x291 y360 w109 h42 Background1a0008 Center +0x200", "✘ PASİF")
 leanBtn.OnEvent("Click", (*) => ToggleLean())
 
-; ── Önerilen Ayarlar (y=446) ──
-G.Add("Text", "x0 y446 w400 h1 Background222222")
-G.Add("Text", "x0 y447 w400 h42 Background0e0e0e")
+; ── Önerilen Ayarlar (y=403) ──
+G.Add("Text", "x0 y403 w400 h1 Background222222")
+G.Add("Text", "x0 y404 w400 h42 Background0e0e0e")
 G.SetFont("s10 w600 cffb300", "Consolas")
-G.Add("Text", "x14 y454 w200 Background0e0e0e", "Önerilen Ayarlar")
+G.Add("Text", "x14 y411 w200 Background0e0e0e", "Önerilen Ayarlar")
 G.SetFont("s7 c555555", "Consolas")
-G.Add("Text", "x14 y468 w200 Background0e0e0e", "Hazır recoil profilleri")
-G.Add("Text", "x290 y446 w1 h42 Background222222")
+G.Add("Text", "x14 y425 w200 Background0e0e0e", "Hazır recoil profilleri")
+G.Add("Text", "x290 y403 w1 h42 Background222222")
 G.SetFont("s9 w700 cffb300", "Consolas")
-presetBtn := G.Add("Text", "x291 y446 w109 h42 Background1a1000 Center +0x200", "⚙ ÖNERİ")
+presetBtn := G.Add("Text", "x291 y403 w109 h42 Background1a1000 Center +0x200", "⚙ ÖNERİ")
 presetBtn.OnEvent("Click", (*) => OpenPresetGui())
 
-; ── Footer (y=488) ──
-G.Add("Text", "x0 y488 w400 h1 Background222222")
-G.Add("Text", "x0 y489 w400 h28 Background0a0a0a")
+; ── Footer (y=445) ──
+G.Add("Text", "x0 y445 w400 h1 Background222222")
+G.Add("Text", "x0 y446 w400 h28 Background0a0a0a")
 G.SetFont("s8 w800 cFFFFFF", "Consolas")
-global rgbLabel := G.Add("Text", "x14 y498 w100 Background0a0a0a", "berkaycimh")
+global rgbLabel := G.Add("Text", "x14 y455 w100 Background0a0a0a", "berkaycimh")
 G.SetFont("s7 c333333", "Consolas")
-global verLabel := G.Add("Text", "x160 y499 w80 Background0a0a0a Center", "v" currentVersion)
+global verLabel := G.Add("Text", "x160 y456 w80 Background0a0a0a Center", "v" currentVersion)
 G.SetFont("s7 c00ff88", "Consolas")
-global ramLabel := G.Add("Text", "x280 y499 w100 Background0a0a0a Right", "RAM: --")
-G.Show("w400 h517")
+global ramLabel := G.Add("Text", "x280 y456 w100 Background0a0a0a Right", "RAM: --")
+G.Show("w400 h474")
 
 ; Başlangıç animasyonu — yukarıdan aşağı kayarak gel
 screenW := SysGet(0)
@@ -465,6 +434,7 @@ SetTimer(UptimeTick, 1000)
 SetTimer(UpdateRAM, 3000)
 SetTimer(SysPulse, 50)
 SetTimer(HudDotBlink, 50)
+SetTimer(BackupSettings, 300000)  ; 5 dakikada bir yedek
 
 ; Rastgele motivasyon yazısı
 mottos := [
@@ -844,18 +814,12 @@ ShowRecoilNotify() {
 }
 
 ToggleHUD() {
-    global HUD, hudVisible, hudToggleBtn
+    global HUD, hudVisible
     hudVisible := !hudVisible
     if (hudVisible) {
         HUD.Show("NoActivate")
-        hudToggleBtn.Value := "AÇIK"
-        hudToggleBtn.SetFont("c00ff88")
-        hudToggleBtn.Opt("Background001a0a")
     } else {
         HUD.Hide()
-        hudToggleBtn.Value := "KAPALI"
-        hudToggleBtn.SetFont("cff3355")
-        hudToggleBtn.Opt("Background1a0008")
     }
 }
 
@@ -925,6 +889,15 @@ SaveSettings(reason, code) {
     IniWrite(hx, iniFile, "HUD", "X")
     IniWrite(hy, iniFile, "HUD", "Y")
     IniWrite(hudOpacity, iniFile, "HUD", "Opacity")
+    ; Kapanırken yedek al
+    BackupSettings()
+}
+
+BackupSettings() {
+    iniFile   := A_ScriptDir "\settings.ini"
+    backupFile := A_ScriptDir "\settings_backup.ini"
+    if FileExist(iniFile)
+        FileCopy(iniFile, backupFile, 1)
 }
 
 UpdateRAM() {
@@ -1429,19 +1402,177 @@ ShowChangelogPopup(ver, body) {
     DllCall("dwmapi\DwmSetWindowAttribute", "ptr", CL.Hwnd, "uint", 34, "int*", 0x0e0e0e, "uint", 4)
 }
 
+OpenThemeGui() {
+    global G
+
+    ; Tema tanımları: [isim, guiBg, titleBg, accent, textColor]
+    themes := [
+        ["⬛ Siyah (Default)", "0e0e0e", "0a0a0a", "00ff88", "FFFFFF"],
+        ["🟦 Lacivert",        "0a0a18", "060612", "4488ff", "FFFFFF"],
+        ["🟣 Koyu Mor",        "120a18", "0c0612", "aa44ff", "FFFFFF"],
+        ["🟥 Koyu Kırmızı",   "180a0a", "120606", "ff3355", "FFFFFF"],
+        ["🟩 Koyu Yeşil",     "0a1810", "06120a", "00ff88", "FFFFFF"],
+        ["🌑 Tam Siyah",      "000000", "000000", "00ff88", "FFFFFF"],
+        ["🌫 Gri",            "1a1a1a", "141414", "aaaaaa", "FFFFFF"],
+    ]
+
+    TG := Gui("+AlwaysOnTop -Caption +ToolWindow +Owner" . A_ScriptHwnd, "")
+    TG.BackColor := "0e0e0e"
+    TG.MarginX := 0
+    TG.MarginY := 0
+
+    ; Titlebar
+    TG.Add("Text", "x0 y0 w3 h36 Background00ff88")
+    TG.Add("Text", "x3 y0 w281 h36 Background0a0a0a")
+    TG.SetFont("s9 w700 c00ff88", "Consolas")
+    TG.Add("Text", "x12 y0 w240 h36 Background0a0a0a +0x200", "⚙ TEMA AYARLARI")
+    TG.Add("Text", "x284 y0 w1 h36 Background222222")
+    TG.SetFont("s12 w700 c555555", "Consolas")
+    tgClose := TG.Add("Text", "x285 y0 w35 h36 Background0a0a0a Center +0x200", "×")
+    tgClose.OnEvent("Click", (*) => TG.Destroy())
+    TG.Add("Text", "x0 y36 w320 h1 Background222222")
+
+    ; Tema butonları
+    yPos := 46
+    for i, t in themes {
+        TG.SetFont("s9 w600 cFFFFFF", "Consolas")
+        btn := TG.Add("Text", "x8 y" yPos " w304 h32 Background141414 +0x200 Center", t[1])
+        btn.OnEvent("Click", ApplyTheme.Bind(t[2], t[3], t[4], t[5], TG))
+        yPos += 36
+    }
+
+    TG.Add("Text", "x0 y" yPos " w320 h1 Background222222")
+    screenW := SysGet(0)
+    screenH := SysGet(1)
+    TG.Show("w320 h" (yPos+2) " x" (screenW-320)//2 " y" (screenH-(yPos+2))//2)
+    DllCall("dwmapi\DwmSetWindowAttribute", "ptr", TG.Hwnd, "uint", 33, "int*", 2, "uint", 4)
+    DllCall("dwmapi\DwmSetWindowAttribute", "ptr", TG.Hwnd, "uint", 34, "int*", 0x0e0e0e, "uint", 4)
+}
+
+ApplyTheme(guiBg, titleBg, accent, textColor, tgGui, *) {
+    global G, sysBarStrip, sysBadge, uptimeLabel, hudAccentBar
+
+    ; GUI arka plan
+    G.BackColor := guiBg
+
+    ; Tüm kontrolleri yeniden renklendir — WinRedraw
+    ; Accent çizgisi
+    if IsObject(sysBarStrip)
+        sysBarStrip.Opt("Background" accent)
+    if IsObject(sysBadge) {
+        sysBadge.Opt("Background" . SubStr(accent, 1, 2) . "1a" . SubStr(accent, 3, 2) . "0a")
+        sysBadge.SetFont("c" accent)
+    }
+    if IsObject(uptimeLabel)
+        uptimeLabel.SetFont("c" accent)
+    if IsObject(hudAccentBar)
+        hudAccentBar.Opt("Background" accent)
+
+    ; Ayarı kaydet
+    iniFile := A_ScriptDir "\settings.ini"
+    IniWrite(guiBg,    iniFile, "Theme", "GuiBg")
+    IniWrite(titleBg,  iniFile, "Theme", "TitleBg")
+    IniWrite(accent,   iniFile, "Theme", "Accent")
+    IniWrite(textColor,iniFile, "Theme", "Text")
+
+    ; Bildirim
+    tgGui.Destroy()
+    static tNotify := ""
+    if IsObject(tNotify)
+        tNotify.Destroy()
+    tNotify := Gui("+AlwaysOnTop -Caption +ToolWindow +Border", "")
+    tNotify.BackColor := "0e0e0e"
+    tNotify.SetFont("s8 w700 c" accent, "Segoe UI")
+    tNotify.Add("Text", "x8 y6 w180 Center", "✔ Tema uygulandı")
+    screenW := SysGet(0)
+    screenH := SysGet(1)
+    tNotify.Show("w196 h28 x" (screenW-196)//2 " y" Round(screenH*0.82) " NoActivate")
+    DllCall("dwmapi\DwmSetWindowAttribute", "ptr", tNotify.Hwnd, "uint", 33, "int*", 2, "uint", 4)
+    SetTimer(() => (IsObject(tNotify) ? tNotify.Destroy() : ""), -2000)
+}
+
 DragWin(*) {
     PostMessage(0xA1, 2, 0, G)
 }
 
+OpenHudSettingsGui() {
+    global HUD, hudVisible, hudToggleBtn
+
+    HS := Gui("+AlwaysOnTop -Caption +ToolWindow +Owner" . A_ScriptHwnd, "")
+    HS.BackColor := "0e0e0e"
+    HS.MarginX := 0
+    HS.MarginY := 0
+
+    ; Titlebar
+    HS.Add("Text", "x0 y0 w3 h36 Background4488ff")
+    HS.Add("Text", "x3 y0 w281 h36 Background0a0a0a")
+    HS.SetFont("s9 w700 c4488ff", "Consolas")
+    HS.Add("Text", "x12 y0 w240 h36 Background0a0a0a +0x200", "⚙ MİNİ HUD AYARLARI")
+    HS.Add("Text", "x284 y0 w1 h36 Background222222")
+    HS.SetFont("s12 w700 c555555", "Consolas")
+    hsClose := HS.Add("Text", "x285 y0 w35 h36 Background0a0a0a Center +0x200", "×")
+    hsClose.OnEvent("Click", (*) => HS.Destroy())
+    HS.Add("Text", "x0 y36 w320 h1 Background222222")
+
+    ; HUD Aç/Kapat
+    HS.SetFont("s8 w600 cFFFFFF", "Consolas")
+    HS.Add("Text", "x10 y46 w140 Background0e0e0e", "HUD Durumu")
+    HS.SetFont("s8 w700 c00ff88", "Consolas")
+    hsToggle := HS.Add("Text", "x160 y44 w140 h22 Background001a0a Center +0x200", hudVisible ? "AÇIK" : "KAPALI")
+    hsToggle.SetFont(hudVisible ? "s8 w700 c00ff88" : "s8 w700 cff3355")
+    hsToggle.Opt("Background" . (hudVisible ? "001a0a" : "1a0008"))
+    hsToggle.OnEvent("Click", (*) => (ToggleHUD(), hsToggle.Value := hudVisible ? "AÇIK" : "KAPALI", hsToggle.SetFont(hudVisible ? "s8 w700 c00ff88" : "s8 w700 cff3355"), hsToggle.Opt("Background" . (hudVisible ? "001a0a" : "1a0008"))))
+
+    HS.Add("Text", "x0 y68 w320 h1 Background222222")
+
+    ; Konum — yön tuşları
+    HS.SetFont("s8 w600 cFFFFFF", "Consolas")
+    HS.Add("Text", "x10 y76 w140 Background0e0e0e", "Konum")
+    HS.SetFont("s9 w700 cFFFFFF", "Consolas")
+    hsBtnUp    := HS.Add("Text", "x160 y72 w30 h26 Background1a1a1a Center +0x200", "▲")
+    hsBtnLeft  := HS.Add("Text", "x160 y100 w30 h26 Background1a1a1a Center +0x200", "◄")
+    hsBtnDown  := HS.Add("Text", "x192 y100 w30 h26 Background1a1a1a Center +0x200", "▼")
+    hsBtnRight := HS.Add("Text", "x224 y100 w30 h26 Background1a1a1a Center +0x200", "►")
+    HS.SetFont("s7 c333333", "Consolas")
+    global hudPosLabel := HS.Add("Text", "x192 y76 w120 Background0e0e0e", "")
+    hsBtnUp.OnEvent("Click",    (*) => (MoveHUD(0,-10), UpdateHudPosLabel()))
+    hsBtnLeft.OnEvent("Click",  (*) => (MoveHUD(-10,0), UpdateHudPosLabel()))
+    hsBtnDown.OnEvent("Click",  (*) => (MoveHUD(0,10),  UpdateHudPosLabel()))
+    hsBtnRight.OnEvent("Click", (*) => (MoveHUD(10,0),  UpdateHudPosLabel()))
+    UpdateHudPosLabel()
+
+    HS.Add("Text", "x0 y130 w320 h1 Background222222")
+
+    ; Monitör seçici
+    HS.SetFont("s8 w600 cFFFFFF", "Consolas")
+    HS.Add("Text", "x10 y138 w140 Background0e0e0e", "Monitör")
+    HS.SetFont("s8 w700 c4488ff", "Consolas")
+    global hudMonBtn := HS.Add("Text", "x160 y136 w140 h22 Background001020 Center +0x200", "MON 1")
+    hudMonBtn.OnEvent("Click", (*) => CycleHudMonitor())
+
+    HS.Add("Text", "x0 y162 w320 h1 Background222222")
+
+    screenW := SysGet(0)
+    screenH := SysGet(1)
+    HS.Show("w320 h164 x" (screenW-320)//2 " y" (screenH-164)//2)
+    DllCall("dwmapi\DwmSetWindowAttribute", "ptr", HS.Hwnd, "uint", 33, "int*", 2, "uint", 4)
+    DllCall("dwmapi\DwmSetWindowAttribute", "ptr", HS.Hwnd, "uint", 34, "int*", 0x0e0e0e, "uint", 4)
+}
+
+UpdateHudPosLabel() {
+    global HUD, hudPosLabel
+    if !IsObject(hudPosLabel)
+        return
+    WinGetPos(&hx, &hy,,, HUD)
+    hudPosLabel.Value := "X:" hx " Y:" hy
+}
+
 ShowChangelog() {
     changelog := "v" . currentVersion . " — Güncel Sürüm`n`n"
-    changelog .= "• Q/E Eğilme Modu — tuş atama, hız, gecikme ayarı`n"
-    changelog .= "• HUD Monitör Seçici — çoklu ekran desteği`n"
-    changelog .= "• HUD yön butonları basılı tutunca sürekli hareket`n"
-    changelog .= "• Lean durumu HUD'da gösteriliyor`n"
-    changelog .= "• Accent çizgisi macro durumuna göre renk değiştiriyor`n"
-    changelog .= "• Güncelleme döngüsü düzeltildi`n"
-    changelog .= "• Önerilen ayarlar popup'ı`n"
+    changelog .= "• Macro ismi değişti`n"
+    changelog .= "• Otomatik kayıt eklendi 5 dakikada bir`n"
+    changelog .= "• Mini hud için ayar butonu eklendi`n"
+    changelog .= "• Mini hud artık istediğiniz ekrana gidiyor`n"
     ShowChangelogPopup(currentVersion, changelog)
 }
 
