@@ -51,7 +51,7 @@ global currentVersion := "2.4"
 ; ─── Lisans Kontrolü ────────────────────────────────────────────────────────
 global licenseUnlimited := "TR-7363-0B28-B721"
 global license30Day := "TR-8357-73X2-0009"
-global licenseAdmin := "TR-ADMİN4832-32BV04"
+global licenseAdmin := "TR-ADMIN4832-32BV04"
 iniFile := A_ScriptDir "\settings.ini"
 savedLicense := IniRead(iniFile, "License", "Key", "")
 licenseType := IniRead(iniFile, "License", "Type", "")
