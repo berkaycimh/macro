@@ -51,6 +51,7 @@ global currentVersion := "2.4"
 ; ─── Lisans Kontrolü ────────────────────────────────────────────────────────
 global licenseUnlimited := "TR-7363-0B28-B721"
 global license30Day := "TR-8357-73X2-0009"
+global licenseAdmin := "TR-ADMİN4832-32BV04"
 iniFile := A_ScriptDir "\settings.ini"
 savedLicense := IniRead(iniFile, "License", "Key", "")
 licenseType := IniRead(iniFile, "License", "Type", "")
@@ -59,6 +60,8 @@ licenseDate := IniRead(iniFile, "License", "Date", "")
 ; 30 günlük süre kontrolü
 licenseValid := false
 if (savedLicense = licenseUnlimited) {
+    licenseValid := true
+} else if (savedLicense = licenseAdmin) {
     licenseValid := true
 } else if (savedLicense = license30Day && licenseDate != "") {
     ; Tarih farkı hesapla
@@ -159,10 +162,9 @@ if (!licenseValid) {
 
     ; Lisans kontrol fonksiyonu
     CheckLicense() {
-        global licInput, licError, licenseUnlimited, license30Day, LicGui
+        global licInput, licError, licenseUnlimited, license30Day, licenseAdmin, LicGui
         entered := Trim(licInput.Value)
         if (entered = licenseUnlimited) {
-            ; Sınırsız key
             licError.SetFont("c00ff88")
             licError.Value := "✔ Lisans doğrulandı!"
             Sleep(600)
@@ -171,6 +173,16 @@ if (!licenseValid) {
             IniWrite("unlimited", iniFile, "License", "Type")
             SetTimer(LicDotBlink, 0)
             global licSuccessMsg := "🎉 Sınırsız key aktif edildi!"
+            LicGui.Destroy()
+        } else if (entered = licenseAdmin) {
+            licError.SetFont("c00ff88")
+            licError.Value := "✔ Kurucu lisansı doğrulandı!"
+            Sleep(600)
+            iniFile := A_ScriptDir "\settings.ini"
+            IniWrite(entered, iniFile, "License", "Key")
+            IniWrite("admin", iniFile, "License", "Type")
+            SetTimer(LicDotBlink, 0)
+            global licSuccessMsg := "👑 Kurucu lisansı aktif edildi!"
             LicGui.Destroy()
         } else if (entered = license30Day) {
             ; 30 günlük key
@@ -620,7 +632,10 @@ G.SetFont("s12 w600 ccbd5e1", "Segoe UI")
 G.Add("Text", "x62 y474 w100 Background1a1d24", "Lisans")
 ; Lisans durumu
 licType := IniRead(A_ScriptDir "\settings.ini", "License", "Type", "")
-if (licType = "unlimited") {
+if (licType = "admin") {
+    G.SetFont("s8 cc4b5fd", "Segoe UI")
+    global licInfoLabel := G.Add("Text", "x62 y492 w200 Background1a1d24", "👑 Kurucu lisansı sınırsız")
+} else if (licType = "unlimited") {
     G.SetFont("s8 c22c55e", "Segoe UI")
     global licInfoLabel := G.Add("Text", "x62 y492 w140 Background1a1d24", "∞ Sınırsız aktif")
 } else if (licType = "30day") {
@@ -1999,7 +2014,9 @@ ShowLicenseInfo() {
     LI.SetFont("s8 c888888", "Consolas")
     LI.Add("Text", "x12 y42 w80 Background0a0a0a", "Tür:")
     LI.SetFont("s8 w700 c00ff88", "Consolas")
-    if (licType = "unlimited")
+    if (licType = "admin")
+        LI.Add("Text", "x90 y42 w200 Background0a0a0a", "Kurucu Lisansı")
+    else if (licType = "unlimited")
         LI.Add("Text", "x90 y42 w200 Background0a0a0a", "Sınırsız")
     else if (licType = "30day")
         LI.Add("Text", "x90 y42 w200 Background0a0a0a", "30 Günlük")
@@ -2016,7 +2033,9 @@ ShowLicenseInfo() {
     LI.SetFont("s8 c888888", "Consolas")
     LI.Add("Text", "x12 y78 w80 Background0a0a0a", "Süre:")
     LI.SetFont("s8 w700 cffb300", "Consolas")
-    if (licType = "unlimited") {
+    if (licType = "admin") {
+        LI.Add("Text", "x90 y78 w200 Background0a0a0a", "∞ Sınırsız (Kurucu)")
+    } else if (licType = "unlimited") {
         LI.Add("Text", "x90 y78 w200 Background0a0a0a", "∞ Sınırsız")
     } else if (licType = "30day") {
         licDate := IniRead(iniFile, "License", "Date", "")
