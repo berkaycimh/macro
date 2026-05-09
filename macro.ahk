@@ -46,12 +46,12 @@ global updateApiUrl := "https://api.github.com/repos/berkaycimh/macro/releases/l
 global updateExeUrl := "https://github.com/berkaycimh/macro/releases/latest/download/PSP.exe"
 
 ; Versiyon — bu değer her zaman derlenen exe ile eşleşmeli
-global currentVersion := "2.4"
+global currentVersion := "2.7"
 
 ; ─── Lisans Kontrolü ────────────────────────────────────────────────────────
 global licenseUnlimited := "TR-7363-0B28-B721"
 global license30Day := "TR-8357-73X2-0009"
-global licenseAdmin := "TR-ADMIN4832-32BV04"
+global licenseAdmin := "TR-4BV4832-32BV04"
 iniFile := A_ScriptDir "\settings.ini"
 savedLicense := IniRead(iniFile, "License", "Key", "")
 licenseType := IniRead(iniFile, "License", "Type", "")
@@ -162,7 +162,8 @@ if (!licenseValid) {
 
     ; Lisans kontrol fonksiyonu
     CheckLicense() {
-        global licInput, licError, licenseUnlimited, license30Day, licenseAdmin, LicGui
+        global licInput, licError, licenseUnlimited, license30Day, LicGui
+        local adminKey := "TR-7565-3827-BH5743"
         entered := Trim(licInput.Value)
         if (entered = licenseUnlimited) {
             licError.SetFont("c00ff88")
@@ -174,7 +175,7 @@ if (!licenseValid) {
             SetTimer(LicDotBlink, 0)
             global licSuccessMsg := "🎉 Sınırsız key aktif edildi!"
             LicGui.Destroy()
-        } else if (entered = licenseAdmin) {
+        } else if (entered = adminKey) {
             licError.SetFont("c00ff88")
             licError.Value := "✔ Kurucu lisansı doğrulandı!"
             Sleep(600)
