@@ -46,7 +46,7 @@ global updateApiUrl := "https://api.github.com/repos/berkaycimh/macro/releases/l
 global updateExeUrl := "https://github.com/berkaycimh/macro/releases/latest/download/PSP.exe"
 
 ; Versiyon — bu değer her zaman derlenen exe ile eşleşmeli
-global currentVersion := "2.7"
+global currentVersion := "2.8"
 
 ; ─── Lisans Kontrolü ────────────────────────────────────────────────────────
 global licenseUnlimited := "TR-7363-0B28-B721"
@@ -163,7 +163,7 @@ if (!licenseValid) {
     ; Lisans kontrol fonksiyonu
     CheckLicense() {
         global licInput, licError, licenseUnlimited, license30Day, LicGui
-        local adminKey := "TR-7565-3827-BH5743"
+        local adminKey := "TR-ADM28-34583FB"
         entered := Trim(licInput.Value)
         if (entered = licenseUnlimited) {
             licError.SetFont("c00ff88")
@@ -475,7 +475,7 @@ statusDot.Opt("+0x1000000")
 G.SetFont("s7 w700 cef4444", "Segoe UI")
 global statusText := G.Add("Text", "x13 y34 w44 h12 Background1a0a0a Center +0x200", "● Pasif")
 
-; v2.4 versiyonu — mor
+; v2.8 versiyonu — mor
 G.SetFont("s7 w600 cc4b5fd", "Segoe UI")
 G.Add("Text", "x62 y35 w30 h10 Background1a1d24", "v" currentVersion)
 
@@ -2052,9 +2052,14 @@ ShowLicenseInfo() {
     LI.SetFont("s7 c333333", "Consolas")
     LI.Add("Text", "x0 y102 w320 Background0a0a0a Center", "LastCircle License System")
 
+    ; Lisans sıfırla butonu
+    LI.SetFont("s8 w700 cff3355", "Consolas")
+    licResetBtn := LI.Add("Text", "x20 y118 w280 h28 Background1a0008 Center +0x200", "🗑 LİSANSI SIFIRLA")
+    licResetBtn.OnEvent("Click", (*) => (LI.Destroy(), ResetLicense()))
+
     screenW := SysGet(0)
     screenH := SysGet(1)
-    LI.Show("w320 h118 x" (screenW-320)//2 " y" (screenH-118)//2)
+    LI.Show("w320 h154 x" (screenW-320)//2 " y" (screenH-154)//2)
     DllCall("dwmapi\DwmSetWindowAttribute", "ptr", LI.Hwnd, "uint", 33, "int*", 2, "uint", 4)
     DllCall("dwmapi\DwmSetWindowAttribute", "ptr", LI.Hwnd, "uint", 34, "int*", 0x0a0a0a, "uint", 4)
 }
