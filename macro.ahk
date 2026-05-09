@@ -46,7 +46,7 @@ global updateApiUrl := "https://api.github.com/repos/berkaycimh/macro/releases/l
 global updateExeUrl := "https://github.com/berkaycimh/macro/releases/latest/download/PSP.exe"
 
 ; Versiyon — bu değer her zaman derlenen exe ile eşleşmeli
-global currentVersion := "2.8"
+global currentVersion := "2.9"
 
 ; ─── Lisans Kontrolü ────────────────────────────────────────────────────────
 global licenseUnlimited := "TR-7363-0B28-B721"
@@ -344,6 +344,15 @@ if FileExist(A_ScriptDir "\updated.flag") {
     goto SkipUpdate
 }
 
+; updateApiUrl boşsa güncelleme kontrolünü atla
+if (updateApiUrl = "") {
+    splashStatus.SetFont("c00ff88")
+    splashStatus.Value := "✔ Güncel — v" currentVersion
+    Sleep(800)
+    splashGui.Destroy()
+    goto SkipUpdate
+}
+
 try {
     ; GitHub Releases API'den latest tag_name çek
     whr := ComObject("MSXML2.ServerXMLHTTP.6.0")
@@ -475,7 +484,7 @@ statusDot.Opt("+0x1000000")
 G.SetFont("s7 w700 cef4444", "Segoe UI")
 global statusText := G.Add("Text", "x13 y34 w44 h12 Background1a0a0a Center +0x200", "● Pasif")
 
-; v2.8 versiyonu — mor
+; v2.9 versiyonu — mor
 G.SetFont("s7 w600 cc4b5fd", "Segoe UI")
 G.Add("Text", "x62 y35 w30 h10 Background1a1d24", "v" currentVersion)
 
