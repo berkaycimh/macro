@@ -30,6 +30,7 @@ global leanState := 0  ; 0=sol, 1=sağ
 global leanOn := false  ; her açılışta kapalı
 global leanKeyLeft := "q"    ; sol eğilme tuşu
 global leanKeyRight := "e"   ; sağ eğilme tuşu
+global bombaModeKey := "LShift"  ; bomba modu aktif tuşu — basılıyken F4 çalışır
 global leanSpeed := 450       ; ms — eğilme aralığı
 global leanDelay := 0         ; ms — ateş başlayınca kaç ms sonra devreye girsin
 global leanToggleKey := ""    ; açma/kapama hotkey
@@ -46,7 +47,7 @@ global updateApiUrl := "https://api.github.com/repos/berkaycimh/macro/releases/l
 global updateExeUrl := "https://github.com/berkaycimh/macro/releases/latest/download/PSP.exe"
 
 ; Versiyon — bu değer her zaman derlenen exe ile eşleşmeli
-global currentVersion := "2.9"
+global currentVersion := "3.0"
 
 ; ─── Lisans Kontrolü ────────────────────────────────────────────────────────
 global licenseUnlimited := "TR-7363-0B28-B721"
@@ -781,6 +782,17 @@ F2:: SetAmmoKey("7.62")
 F3:: SetAmmoKey("9MM")
 F4:: SetAmmoKey("BOMBA")
 Delete:: DoToggleMacro()
+
+; Bomba modu — tuşa basılıyken BOMBA, bırakınca önceki silaha dön
+~*LShift:: {
+    global bombaModeKey, activeAmmo
+    if (bombaModeKey = "" || bombaModeKey != "LShift")
+        return
+    prevAmmo := activeAmmo
+    SetAmmoKey("BOMBA")
+    KeyWait("LShift")
+    SetAmmoKey(prevAmmo)
+}
 
 
 
@@ -1704,6 +1716,34 @@ ApplyTheme(guiBg, titleBg, accent, textColor, tgGui, *) {
     SetTimer(() => (IsObject(tNotify) ? tNotify.Destroy() : ""), -2000)
 }
 
+AssignBombaModeKey() {
+    global bombaModeKey, bombaModeKeyBtn
+
+    aGui := Gui("+AlwaysOnTop -Caption +ToolWindow +Border", "")
+    aGui.BackColor := "0e0e0e"
+    aGui.SetFont("s8 w700 c818cf8", "Consolas")
+    aGui.Add("Text", "x10 y10 w200 Center", "Bomba modu aktif tuşu")
+    aGui.SetFont("s7 c555555", "Consolas")
+    aGui.Add("Text", "x10 y26 w200 Center", "Bir tuşa bas — ESC = YOK")
+    screenW := SysGet(0)
+    screenH := SysGet(1)
+    aGui.Show("w220 h50 x" (screenW-220)//2 " y" (screenH-50)//2 " NoActivate")
+    Sleep(200)
+
+    ih := InputHook("L1 T5")
+    ih.KeyOpt("{All}", "E")
+    ih.Start()
+    ih.Wait()
+    pressedKey := ih.EndKey
+    aGui.Destroy()
+
+    if (pressedKey = "Escape" || pressedKey = "") {
+        bombaModeKey := ""
+        return
+    }
+    bombaModeKey := pressedKey
+}
+
 DragWin(*) {
     PostMessage(0xA1, 2, 0, G)
 }
@@ -1765,9 +1805,23 @@ OpenHudSettingsGui() {
 
     HS.Add("Text", "x0 y162 w320 h1 Background222222")
 
+    ; Bomba Modu tuşu
+    HS.SetFont("s8 w700 c818cf8", "Consolas")
+    HS.Add("Text", "x10 y170 w300 h16 Background0e0e0e", "⬡ BOMBA MODU")
+    HS.Add("Text", "x0 y188 w320 h1 Background222222")
+    HS.SetFont("s8 w600 cFFFFFF", "Consolas")
+    HS.Add("Text", "x10 y196 w140 Background0e0e0e", "Aktif tuşu")
+    HS.SetFont("s7 c555555", "Consolas")
+    HS.Add("Text", "x10 y210 w140 Background0e0e0e", "Basılıyken BOMBA modu aktif")
+    HS.SetFont("s8 w700 c818cf8", "Consolas")
+    global bombaModeKeyBtn := HS.Add("Text", "x160 y194 w140 h22 Background141414 Center +0x200", bombaModeKey = "" ? "YOK" : StrUpper(bombaModeKey))
+    bombaModeKeyBtn.OnEvent("Click", (*) => (AssignBombaModeKey(), bombaModeKeyBtn.Value := bombaModeKey = "" ? "YOK" : StrUpper(bombaModeKey)))
+
+    HS.Add("Text", "x0 y220 w320 h1 Background222222")
+
     screenW := SysGet(0)
     screenH := SysGet(1)
-    HS.Show("w320 h164 x" (screenW-320)//2 " y" (screenH-164)//2)
+    HS.Show("w320 h222 x" (screenW-320)//2 " y" (screenH-222)//2)
     DllCall("dwmapi\DwmSetWindowAttribute", "ptr", HS.Hwnd, "uint", 33, "int*", 2, "uint", 4)
     DllCall("dwmapi\DwmSetWindowAttribute", "ptr", HS.Hwnd, "uint", 34, "int*", 0x0e0e0e, "uint", 4)
 }
