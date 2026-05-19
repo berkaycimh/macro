@@ -47,7 +47,7 @@ global updateApiUrl := "https://api.github.com/repos/berkaycimh/macro/releases/l
 global updateExeUrl := "https://github.com/berkaycimh/macro/releases/latest/download/PSP.exe"
 
 ; Versiyon — bu değer her zaman derlenen exe ile eşleşmeli
-global currentVersion := "3.0"
+global currentVersion := "3.1"
 
 ; ─── Lisans Kontrolü ────────────────────────────────────────────────────────
 global licenseUnlimited := "TR-7363-0B28-B721"
@@ -290,6 +290,7 @@ if FileExist(iniFile) {
     recoilValues["7.62"] := IniRead(iniFile, "Recoil", "762", 0)
     recoilValues["9MM"]  := IniRead(iniFile, "Recoil", "9mm", 0)
     activeAmmo           := IniRead(iniFile, "Settings", "LastAmmo", "5.56")
+    bombaModeKey         := IniRead(iniFile, "Settings", "BombaModeKey", "LShift")
     statTotal := IniRead(iniFile, "Stats", "Total", 0)
     stat556   := IniRead(iniFile, "Stats", "556",   0)
     stat762   := IniRead(iniFile, "Stats", "762",   0)
@@ -424,34 +425,32 @@ splashGui.Destroy()
 SkipUpdate:
 ; ─── GUI ───────────────────────────────────────────────────────────────────
 G := Gui("+AlwaysOnTop -Caption +ToolWindow", "")
-G.BackColor := "0f1115"
+G.BackColor := "111114"
 G.MarginX := 0
 G.MarginY := 0
 
-; ── Header (52px) ──
-G.Add("Text", "x0 y0 w320 h52 Background1a1d24")
+; ── Üst mor accent çizgisi (3px) ──
+G.Add("Text", "x0 y0 w300 h3 Background6366f1")
 
-; LastCircle yazısı — mor-beyaz, birleşik
-G.SetFont("s9 w700 cFFFFFF", "Segoe UI")
-G.Add("Text", "x16 y10 w30 Background1a1d24", "Last")
-G.SetFont("s9 w700 cc4b5fd", "Segoe UI")
-G.Add("Text", "x44 y10 w46 Background1a1d24", "Circle")
-
-; Minimize button — border efekti, sola kaydırıldı
-G.Add("Text", "x268 y8 w22 h22 Background252830")
-G.Add("Text", "x269 y9 w20 h20 Background1e2128")
-G.SetFont("s9 c64748b", "Segoe UI")
-minBtn := G.Add("Text", "x269 y9 w20 h20 Background1e2128 Center +0x200", "─")
+; ── Header (y=3, h=42) ──
+G.Add("Text", "x0 y3 w300 h42 Background111114")
+G.SetFont("s11 w700 ce2e8f0", "Segoe UI")
+G.Add("Text", "x14 y12 w46 Background111114", "Last")
+G.SetFont("s11 w700 c6366f1", "Segoe UI")
+G.Add("Text", "x58 y12 w60 Background111114", "Circle")
+G.SetFont("s7 w600 c6366f1", "Segoe UI")
+G.Add("Text", "x120 y16 w30 Background0d0d1a", "v" currentVersion)
+G.SetFont("s7 w700 c22c55e", "Segoe UI")
+global changelogBtn := G.Add("Text", "x154 y16 w66 h12 Background111114 Center +0x200", "Güncellemeler")
+changelogBtn.OnEvent("Click", (*) => ShowChangelog())
+G.SetFont("s9 c475569", "Segoe UI")
+minBtn := G.Add("Text", "x232 y12 w28 h22 Background111114 Center +0x200", "─")
 minBtn.OnEvent("Click", (*) => G.Hide())
-
-; Close button — border efekti, sola kaydırıldı
-G.Add("Text", "x292 y8 w22 h22 Background2a1a1a")
-G.Add("Text", "x293 y9 w20 h20 Background221010")
-G.SetFont("s9 cff3355", "Segoe UI")
-closeBtn := G.Add("Text", "x293 y9 w20 h20 Background221010 Center +0x200", "✕")
+G.SetFont("s9 cef4444", "Segoe UI")
+closeBtn := G.Add("Text", "x262 y12 w28 h22 Background111114 Center +0x200", "✕")
 closeBtn.OnEvent("Click", (*) => ExitApp())
 
-; Tray menüsü — GUI'yi geri aç
+; Tray menüsü
 A_TrayMenu.Add("Göster", (*) => G.Show())
 A_TrayMenu.Add("Lisans Bilgisi", (*) => ShowLicenseInfo())
 A_TrayMenu.Add("Çıkış", (*) => ExitApp())
@@ -465,218 +464,202 @@ WM_MOUSEMOVE_Handler(wParam, lParam, msg, hwnd) {
     if (hwnd = closeBtn.Hwnd) {
         if (!closeBtnHover) {
             closeBtnHover := true
-            closeBtn.SetFont("cff3355")
+            closeBtn.SetFont("cef4444")
         }
     } else {
         if (closeBtnHover) {
             closeBtnHover := false
-            closeBtn.SetFont("c64748b")
+            closeBtn.SetFont("c475569")
         }
     }
 }
 
-; (sürükleme alanı yukarıda changelog butonunun yanında tanımlandı)
+; Sürükleme alanı
+G.Add("Text", "x0 y3 w220 h42 BackgroundTrans").OnEvent("Click", DragWin)
 
-; ── Status Row (header içinde) ──
-; Pasif/Aktif chip — border efekti
-G.Add("Text", "x12 y33 w46 h14 Background2a1a1a")
-statusDot := G.Add("Text", "x13 y34 w44 h12 Background1a0a0a")
+; ── Status strip (y=45, h=24) ──
+G.Add("Text", "x0 y45 w300 h1 Background1a1a2e")
+G.Add("Text", "x0 y46 w300 h24 Background0d0d14")
+G.SetFont("s8 w700 cef4444", "Segoe UI")
+statusDot := G.Add("Text", "x14 y54 w6 h6 Background0d0d14")
 statusDot.Opt("+0x1000000")
-G.SetFont("s7 w700 cef4444", "Segoe UI")
-global statusText := G.Add("Text", "x13 y34 w44 h12 Background1a0a0a Center +0x200", "● Pasif")
-
-; v2.9 versiyonu — mor
-G.SetFont("s7 w600 cc4b5fd", "Segoe UI")
-G.Add("Text", "x62 y35 w30 h10 Background1a1d24", "v" currentVersion)
-
-; Güncellemeler butonu — border ile
-G.Add("Text", "x88 y33 w74 h14 Background4a5568")
-G.Add("Text", "x89 y34 w72 h12 Background1a1d24")
+global statusText := G.Add("Text", "x14 y52 w60 Background0d0d14", "● PASİF")
 G.SetFont("s7 w700 c22c55e", "Segoe UI")
-global changelogBtn := G.Add("Text", "x89 y35 w72 h10 Background1a1d24 Center +0x200", "Güncellemeler")
-changelogBtn.OnEvent("Click", (*) => ShowChangelog())
+global uptimeLabel := G.Add("Text", "x240 y52 w46 Background0d0d14 Right", "00:00")
+global ramLabel := G.Add("Text", "x0 y0 w1 h1 Background111114", "")
 
-; Sürükleme alanı — changelog butonunu KAPSAMAYACAK şekilde
-G.Add("Text", "x0 y0 w88 h52 BackgroundTrans").OnEvent("Click", DragWin)
-G.Add("Text", "x162 y0 w108 h52 BackgroundTrans").OnEvent("Click", DragWin)
+; ── Silah Seçimi (y=70) ──
+G.Add("Text", "x0 y70 w300 h1 Background1a1a2e")
+G.SetFont("s8 w700 c475569", "Segoe UI")
+G.Add("Text", "x14 y78 w120 Background111114", "SİLAH SEÇİMİ")
 
-; Uptime — border içinde, kompakt
-G.Add("Text", "x250 y34 w60 h13 Background2d3748")
-G.Add("Text", "x251 y35 w58 h11 Background1a1d24")
-G.SetFont("s6 w600 cf8fafc", "Segoe UI")
-G.Add("Text", "x254 y35 w20 h10 Background1a1d24", "UPT:")
-G.SetFont("s7 w700 c22c55e", "Segoe UI")
-global uptimeLabel := G.Add("Text", "x278 y35 w28 h10 Background1a1d24", "00:00")
-
-; RAM kaldırıldı
-global ramLabel := G.Add("Text", "x0 y0 w1 h1 Background0f1115", "")
-
-; ── Silah Seçimi (y=58) ──
-G.Add("Text", "x0 y58 w320 h1 Background222222")
-G.SetFont("s10 w700 cf8fafc", "Segoe UI")
-G.Add("Text", "x16 y68 w120 Background0f1115", "Silah Seçimi")
-
-; Silah kartları (y=88) — border efekti: dış kutu (border rengi) + iç kutu (kart rengi)
-; 5.56
-G.Add("Text", "x16 y88 w72 h60 Background2a3a2a")
-G.Add("Text", "x17 y89 w70 h58 Background1a1d24")
-global a556Top := G.Add("Text", "x17 y89 w70 h2 Background22c55e")
-G.SetFont("s8 cf8fafc", "Segoe UI")
-G.Add("Text", "x17 y95 w70 Background1a1d24 Center", "F1")
-G.SetFont("s13 w800 c22c55e", "Segoe UI")
-a556 := G.Add("Text", "x17 y107 w70 h24 Background1a1d24 Center +0x200", "5.56")
+; 5.56 — alt çizgi rengi
+G.Add("Text", "x14 y94 w62 h52 Background161620")
+global a556Top := G.Add("Text", "x14 y142 w62 h2 Background22c55e")
+G.SetFont("s7 c334155", "Segoe UI")
+G.Add("Text", "x14 y98 w62 Background161620 Center", "F1")
+G.SetFont("s12 w800 c22c55e", "Segoe UI")
+a556 := G.Add("Text", "x14 y110 w62 h22 Background161620 Center +0x200", "5.56")
 
 ; 7.62
-G.Add("Text", "x94 y88 w72 h60 Background2a2a1a")
-G.Add("Text", "x95 y89 w70 h58 Background1a1d24")
-global a762Top := G.Add("Text", "x95 y89 w70 h2 Background1a1d24")
-G.SetFont("s8 cf8fafc", "Segoe UI")
-G.Add("Text", "x95 y95 w70 Background1a1d24 Center", "F2")
-G.SetFont("s13 w800 c64748b", "Segoe UI")
-a762 := G.Add("Text", "x95 y107 w70 h24 Background1a1d24 Center +0x200", "7.62")
+G.Add("Text", "x80 y94 w62 h52 Background161620")
+global a762Top := G.Add("Text", "x80 y142 w62 h2 Background161620")
+G.SetFont("s7 c334155", "Segoe UI")
+G.Add("Text", "x80 y98 w62 Background161620 Center", "F2")
+G.SetFont("s12 w800 c334155", "Segoe UI")
+a762 := G.Add("Text", "x80 y110 w62 h22 Background161620 Center +0x200", "7.62")
 
 ; 9MM
-G.Add("Text", "x172 y88 w72 h60 Background2a1e1a")
-G.Add("Text", "x173 y89 w70 h58 Background1a1d24")
-global a9mmTop := G.Add("Text", "x173 y89 w70 h2 Background1a1d24")
-G.SetFont("s8 cf8fafc", "Segoe UI")
-G.Add("Text", "x173 y95 w70 Background1a1d24 Center", "F3")
-G.SetFont("s13 w800 c64748b", "Segoe UI")
-a9mm := G.Add("Text", "x173 y107 w70 h24 Background1a1d24 Center +0x200", "9MM")
+G.Add("Text", "x146 y94 w62 h52 Background161620")
+global a9mmTop := G.Add("Text", "x146 y142 w62 h2 Background161620")
+G.SetFont("s7 c334155", "Segoe UI")
+G.Add("Text", "x146 y98 w62 Background161620 Center", "F3")
+G.SetFont("s12 w800 c334155", "Segoe UI")
+a9mm := G.Add("Text", "x146 y110 w62 h22 Background161620 Center +0x200", "9MM")
 
 ; BOMBA
-G.Add("Text", "x248 y88 w72 h60 Background1e1a2a")
-G.Add("Text", "x249 y89 w70 h58 Background1a1d24")
-global aBombaTop := G.Add("Text", "x249 y89 w70 h2 Background1a1d24")
-G.SetFont("s8 cf8fafc", "Segoe UI")
-G.Add("Text", "x249 y95 w70 Background1a1d24 Center", "F4")
-G.SetFont("s13 w800 c64748b", "Segoe UI")
-aBomba := G.Add("Text", "x249 y107 w70 h24 Background1a1d24 Center +0x200", "💣")
+G.Add("Text", "x212 y94 w74 h52 Background161620")
+global aBombaTop := G.Add("Text", "x212 y142 w74 h2 Background161620")
+G.SetFont("s7 c334155", "Segoe UI")
+G.Add("Text", "x212 y98 w74 Background161620 Center", "F4")
+G.SetFont("s12 w800 c334155", "Segoe UI")
+aBomba := G.Add("Text", "x212 y110 w74 h22 Background161620 Center +0x200", "💣")
 
 a556.OnEvent("Click",   (*) => SetAmmo("5.56"))
 a762.OnEvent("Click",   (*) => SetAmmo("7.62"))
 a9mm.OnEvent("Click",   (*) => SetAmmo("9MM"))
 aBomba.OnEvent("Click", (*) => SetAmmoKey("BOMBA"))
 
-; ── Recoil (y=158) ──
-G.Add("Text", "x0 y158 w320 h1 Background222222")
-G.SetFont("s10 w700 cf8fafc", "Segoe UI")
-G.Add("Text", "x16 y168 w150 Background0f1115", "Recoil Kontrolü")
+; ── Recoil (y=150) ──
+G.Add("Text", "x0 y150 w300 h1 Background1a1a2e")
+G.SetFont("s8 w700 c475569", "Segoe UI")
+G.Add("Text", "x14 y158 w120 Background111114", "RECOİL")
 
-; Recoil card (y=188, height=92)
-G.Add("Text", "x16 y188 w288 h92 Background1a1d24")
-G.SetFont("s10 w600 cf8fafc", "Segoe UI")
-G.Add("Text", "x24 y196 w150 Background1a1d24", "Aşağı kaydırma hızı")
-recoilLabel := G.Add("Text", "x230 y196 w58 Background1a1d24 Right", "")
-
-; Recoil değer (büyük sayı)
-G.SetFont("s14 w800 cf8fafc", "Segoe UI")
-recoilNum := G.Add("Text", "x200 y210 w88 Background1a1d24 Right", "0")
-
-; Progress bar — daha belirgin
-G.Add("Text", "x24 y236 w264 h10 Background252836")
-global progressBar := G.Add("Text", "x24 y236 w0 h10 Background818cf8")
-
-; Bar alt etiketleri
-G.SetFont("s6 c334155", "Segoe UI")
-G.Add("Text", "x24 y248 w20 Background1a1d24", "0")
-G.Add("Text", "x276 y248 w12 Background1a1d24 Right", "100")
-
-; Hint text
+; Recoil card — sol kenar mor çizgi
+G.Add("Text", "x14 y172 w3 h80 Background6366f1")
+G.Add("Text", "x17 y172 w269 h80 Background161620")
+G.SetFont("s9 w600 c94a3b8", "Segoe UI")
+G.Add("Text", "x26 y180 w140 Background161620", "Aşağı kaydırma hızı")
+recoilLabel := G.Add("Text", "x200 y180 w80 Background161620 Right", "")
+G.SetFont("s22 w900 cf8fafc", "Segoe UI")
+recoilNum := G.Add("Text", "x180 y192 w100 Background161620 Right", "0")
+G.Add("Text", "x26 y228 w264 h6 Background0d0d14")
+global progressBar := G.Add("Text", "x26 y228 w0 h6 Background6366f1")
 G.SetFont("s7 cef4444", "Segoe UI")
-G.Add("Text", "x24 y260 w264 Background1a1d24 Center", "Klavye de bulunan yukarı ve aşağı yön tuşları ile")
-G.Add("Text", "x24 y272 w264 Background1a1d24 Center", "arttırıp azaltabilirsiniz")
+G.Add("Text", "x26 y238 w264 Background161620 Center", "↑↓ yön tuşları ile ayarlayın")
 
-; ── Kontroller (y=286) ──
-G.Add("Text", "x0 y286 w320 h1 Background222222")
-G.SetFont("s10 w700 cf8fafc", "Segoe UI")
-G.Add("Text", "x16 y296 w200 Background0f1115", "Kontroller")
-; berkaycimh — sağ tarafta
-G.SetFont("s7 w600 c475569", "Segoe UI")
-G.Add("Text", "x200 y298 w104 Background0f1115 Right", "berkaycimh")
+; ── Kontroller (y=256) ──
+G.Add("Text", "x0 y256 w300 h1 Background1a1a2e")
+G.SetFont("s8 w700 c475569", "Segoe UI")
+G.Add("Text", "x14 y264 w160 Background111114", "KONTROLLER")
+G.SetFont("s7 w600 c334155", "Segoe UI")
+G.Add("Text", "x180 y266 w106 Background111114 Right", "berkaycimh")
 
-; Macro card (y=316, height=46)
-G.Add("Text", "x16 y316 w288 h46 Background1a1d24")
-G.Add("Text", "x24 y324 w30 h28 Background2d1a1a")
+; Macro — sol kırmızı çizgi
+G.Add("Text", "x14 y278 w3 h38 Backgroundef4444")
+G.Add("Text", "x17 y278 w269 h38 Background161620")
 G.SetFont("s10 w700 cef4444", "Segoe UI")
-G.Add("Text", "x24 y324 w30 h28 Background2d1a1a Center +0x200", "◉")
-G.SetFont("s12 w600 ccbd5e1", "Segoe UI")
-G.Add("Text", "x62 y324 w100 Background1a1d24", "Macro")
-G.SetFont("s7 cf8fafc", "Segoe UI")
-G.Add("Text", "x62 y342 w140 Background1a1d24", "DELETE tuşu ile aç/kapat")
+G.Add("Text", "x26 y289 w16 h16 Background161620 Center", "◉")
+G.SetFont("s9 w600 ccbd5e1", "Segoe UI")
+G.Add("Text", "x46 y287 w100 Background161620", "Macro")
+G.SetFont("s7 c334155", "Segoe UI")
+G.Add("Text", "x46 y302 w120 Background161620", "DELETE tuşu")
 G.SetFont("s9 w700 cef4444", "Segoe UI")
-toggleMacro := G.Add("Text", "x220 y326 w76 h28 Background2d1a1a Center +0x200", "PASİF")
+toggleMacro := G.Add("Text", "x196 y284 w84 h26 Background1a0808 Center +0x200", "PASİF")
 toggleMacro.OnEvent("Click", (*) => DoToggleMacro())
 
-; Kaydet card (y=366, height=46)
-G.Add("Text", "x16 y366 w288 h46 Background1a1d24")
-G.Add("Text", "x24 y372 w30 h28 Background1a2d1a")
+; Kaydet — sol yeşil çizgi
+G.Add("Text", "x14 y320 w3 h38 Background22c55e")
+G.Add("Text", "x17 y320 w269 h38 Background161620")
 G.SetFont("s10 w700 c22c55e", "Segoe UI")
-G.Add("Text", "x24 y372 w30 h28 Background1a2d1a Center +0x200", "▣")
-G.SetFont("s11 w600 ccbd5e1", "Segoe UI")
-G.Add("Text", "x62 y374 w100 Background1a1d24", "Kaydet")
-G.SetFont("s7 cf8fafc", "Segoe UI")
-global saveStatus := G.Add("Text", "x62 y392 w140 Background1a1d24", "Otomatik kaydediliyor")
+G.Add("Text", "x26 y331 w16 h16 Background161620 Center", "▣")
+G.SetFont("s9 w600 ccbd5e1", "Segoe UI")
+G.Add("Text", "x46 y329 w100 Background161620", "Kaydet")
+G.SetFont("s7 c334155", "Segoe UI")
+global saveStatus := G.Add("Text", "x46 y344 w120 Background161620", "Otomatik")
 G.SetFont("s9 w700 c22c55e", "Segoe UI")
-saveBtn := G.Add("Text", "x220 y376 w76 h28 Background1a2d1a Center +0x200", "KAYDET")
+saveBtn := G.Add("Text", "x196 y326 w84 h26 Background081a08 Center +0x200", "KAYDET")
 saveBtn.OnEvent("Click", (*) => DoSave())
 
-; Diğer Ayarlar card (y=416, height=46)
-G.Add("Text", "x16 y416 w288 h46 Background1a1d24")
-G.Add("Text", "x24 y422 w30 h28 Background1a1e2d")
+; Diğer Ayarlar — sol mor çizgi
+G.Add("Text", "x14 y362 w3 h38 Background6366f1")
+G.Add("Text", "x17 y362 w269 h38 Background161620")
 G.SetFont("s10 w700 c6366f1", "Segoe UI")
-G.Add("Text", "x24 y422 w30 h28 Background1a1e2d Center +0x200", "✦")
-G.SetFont("s12 w600 ccbd5e1", "Segoe UI")
-G.Add("Text", "x62 y424 w140 Background1a1d24", "Diğer Ayarlar")
-G.SetFont("s7 cf8fafc", "Segoe UI")
-G.Add("Text", "x62 y442 w140 Background1a1d24", "Mini HUD")
+G.Add("Text", "x26 y373 w16 h16 Background161620 Center", "✦")
+G.SetFont("s9 w600 ccbd5e1", "Segoe UI")
+G.Add("Text", "x46 y371 w120 Background161620", "Diğer Ayarlar")
+G.SetFont("s7 c334155", "Segoe UI")
+G.Add("Text", "x46 y386 w120 Background161620", "")
 G.SetFont("s9 w700 c6366f1", "Segoe UI")
-settingsBtn := G.Add("Text", "x220 y426 w76 h28 Background1a1e2d Center +0x200", "AYARLAR")
+settingsBtn := G.Add("Text", "x196 y368 w84 h26 Background08081a Center +0x200", "AYARLAR")
 settingsBtn.OnEvent("Click", (*) => OpenHudSettingsGui())
 
-; Lisans card (y=466, height=46)
-G.Add("Text", "x16 y466 w288 h46 Background1a1d24")
-G.Add("Text", "x24 y472 w30 h28 Background251a2d")
+; Lisans — sol mor çizgi
+G.Add("Text", "x14 y404 w3 h38 Backgrounda855f7")
+G.Add("Text", "x17 y404 w269 h38 Background161620")
 G.SetFont("s10 w700 ca855f7", "Segoe UI")
-G.Add("Text", "x24 y472 w30 h28 Background251a2d Center +0x200", "◈")
-G.SetFont("s12 w600 ccbd5e1", "Segoe UI")
-G.Add("Text", "x62 y474 w100 Background1a1d24", "Lisans")
-; Lisans durumu
+G.Add("Text", "x26 y415 w16 h16 Background161620 Center", "◈")
+G.SetFont("s9 w600 ccbd5e1", "Segoe UI")
+G.Add("Text", "x46 y413 w100 Background161620", "Lisans")
 licType := IniRead(A_ScriptDir "\settings.ini", "License", "Type", "")
 if (licType = "admin") {
-    G.SetFont("s8 cc4b5fd", "Segoe UI")
-    global licInfoLabel := G.Add("Text", "x62 y492 w200 Background1a1d24", "👑 Kurucu lisansı sınırsız")
+    G.SetFont("s7 cc4b5fd", "Segoe UI")
+    global licInfoLabel := G.Add("Text", "x46 y428 w160 Background161620", "Kurucu lisansı")
 } else if (licType = "unlimited") {
-    G.SetFont("s8 c22c55e", "Segoe UI")
-    global licInfoLabel := G.Add("Text", "x62 y492 w140 Background1a1d24", "∞ Sınırsız aktif")
+    G.SetFont("s7 c22c55e", "Segoe UI")
+    global licInfoLabel := G.Add("Text", "x46 y428 w160 Background161620", "∞ Sınırsız aktif")
 } else if (licType = "30day") {
     licDate := IniRead(A_ScriptDir "\settings.ini", "License", "Date", "")
     remainDays := 30 - DateDiff(A_Now, licDate, "Days")
     if (remainDays < 0)
         remainDays := 0
     if (remainDays <= 7) {
-        G.SetFont("s8 cef4444", "Segoe UI")
-        global licInfoLabel := G.Add("Text", "x62 y492 w140 Background1a1d24", "⏱ " remainDays " gün kaldı")
+        G.SetFont("s7 cef4444", "Segoe UI")
+        global licInfoLabel := G.Add("Text", "x46 y428 w160 Background161620", "⏱ " remainDays " gün kaldı")
     } else {
-        G.SetFont("s8 c22c55e", "Segoe UI")
-        global licInfoLabel := G.Add("Text", "x62 y492 w140 Background1a1d24", "⏱ " remainDays " gün kaldı")
+        G.SetFont("s7 c22c55e", "Segoe UI")
+        global licInfoLabel := G.Add("Text", "x46 y428 w160 Background161620", "⏱ " remainDays " gün kaldı")
     }
 } else {
-    G.SetFont("s8 c64748b", "Segoe UI")
-    global licInfoLabel := G.Add("Text", "x62 y492 w140 Background1a1d24", "Lisans bilgisi yok")
+    G.SetFont("s7 c64748b", "Segoe UI")
+    global licInfoLabel := G.Add("Text", "x46 y428 w160 Background161620", "Lisans bilgisi yok")
 }
 G.SetFont("s9 w700 ca855f7", "Segoe UI")
-licBtn := G.Add("Text", "x220 y476 w76 h28 Background251a2d Center +0x200", "BİLGİ")
+licBtn := G.Add("Text", "x196 y410 w84 h26 Background150818 Center +0x200", "BİLGİ")
 licBtn.OnEvent("Click", (*) => ShowLicenseInfo())
 
-G.Show("w320 h522")
+G.Show("w300 h452")
+
+; Butonlara yuvarlak köşe — CreateRoundRectRgn
+RoundBtn(ctrl, w, h) {
+    hRgn := DllCall("CreateRoundRectRgn", "int", 0, "int", 0, "int", w, "int", h, "int", 14, "int", 14, "ptr")
+    DllCall("SetWindowRgn", "ptr", ctrl.Hwnd, "ptr", hRgn, "int", 1)
+}
+RoundBtn(toggleMacro, 84, 26)
+RoundBtn(saveBtn, 84, 26)
+RoundBtn(settingsBtn, 84, 26)
+RoundBtn(licBtn, 84, 26)
+
+; Köşe kesilen kısımları kart rengiyle kapat
+FixCorners(ctrl, x, y) {
+    global G
+    ; Sol üst
+    G.Add("Text", "x" x " y" y " w4 h4 Background161620")
+    G.Add("Text", "x" (x+80) " y" y " w4 h4 Background161620")
+    G.Add("Text", "x" x " y" (y+22) " w4 h4 Background161620")
+    G.Add("Text", "x" (x+80) " y" (y+22) " w4 h4 Background161620")
+}
+FixCorners(toggleMacro, 196, 284)
+FixCorners(saveBtn, 196, 326)
+FixCorners(settingsBtn, 196, 368)
+FixCorners(licBtn, 196, 410)
 
 ; Başlangıç animasyonu — yukarıdan aşağı kayarak gel
 screenW := SysGet(0)
 screenH := SysGet(1)
-startX := (screenW - 320) // 2
-startY := -522
-targetY := (screenH - 522) // 2
+startX := (screenW - 300) // 2
+startY := -452
+targetY := (screenH - 452) // 2
 G.Move(startX, startY)
 G.Show("NoActivate")
 loop {
@@ -705,6 +688,7 @@ OnExit(SaveSettings)
 SetTimer(UptimeTick, 1000)
 SetTimer(UpdateRAM, 3000)
 SetTimer(HudDotBlink, 50)
+SetTimer(StatusDotBlink, 600)
 SetTimer(BackupSettings, 300000)  ; 5 dakikada bir yedek
 
 ; ── Mini HUD Overlay — v2 ──
@@ -770,10 +754,7 @@ HUD.OnEvent("Size", ResizeHUD)
 HWND := G.Hwnd
 DllCall("dwmapi\DwmSetWindowAttribute", "ptr", HWND, "uint", 2,  "int*", 1,          "uint", 4)
 DllCall("dwmapi\DwmSetWindowAttribute", "ptr", HWND, "uint", 33, "int*", 2,          "uint", 4)
-DllCall("dwmapi\DwmSetWindowAttribute", "ptr", HWND, "uint", 34, "int*", 0x0f1115,   "uint", 4)
-
-; Yuvarlak köşeler (Windows 11)
-DllCall("dwmapi\DwmSetWindowAttribute", "ptr", HWND, "uint", 33, "int*", 2, "uint", 4)
+DllCall("dwmapi\DwmSetWindowAttribute", "ptr", HWND, "uint", 34, "int*", 0x111114,   "uint", 4)
 
 ; ─── Hotkeys ───────────────────────────────────────────────────────────────
 
@@ -917,7 +898,7 @@ SetAmmoKey(ammo) {
     screenW := SysGet(0)
     screenH := SysGet(1)
     ammoGui.Show("w196 h28 x" (screenW-196)//2 " y" Round(screenH*0.82) " NoActivate")
-    DllCall("dwmapi\DwmSetWindowAttribute", "ptr", ammoGui.Hwnd, "uint", 33, "int*", 2, "uint", 4)
+    try DllCall("dwmapi\DwmSetWindowAttribute", "ptr", ammoGui.Hwnd, "uint", 33, "int*", 2, "uint", 4)
     SetTimer(() => (IsObject(ammoGui) ? ammoGui.Destroy() : ""), -2500)
 }
 
@@ -927,24 +908,24 @@ SetAmmo(ammo) {
     activeAmmo := ammo
     if !IsObject(a556)
         return
-    
+
     ; Reset all colors
-    a556.SetFont("c64748b")
-    a762.SetFont("c64748b")
-    a9mm.SetFont("c64748b")
-    aBomba.SetFont("c64748b")
-    
-    ; Reset all top bars — iç kart rengiyle aynı yap
-    a556Top.Opt("Background1a1d24")
-    a762Top.Opt("Background1a1d24")
-    a9mmTop.Opt("Background1a1d24")
-    aBombaTop.Opt("Background1a1d24")
+    a556.SetFont("c334155")
+    a762.SetFont("c334155")
+    a9mm.SetFont("c334155")
+    aBomba.SetFont("c334155")
+
+    ; Reset all bottom bars
+    a556Top.Opt("Background161620")
+    a762Top.Opt("Background161620")
+    a9mmTop.Opt("Background161620")
+    aBombaTop.Opt("Background161620")
     a556Top.Redraw()
     a762Top.Redraw()
     a9mmTop.Redraw()
     aBombaTop.Redraw()
-    
-    ; Set active ammo color and top bar
+
+    ; Set active
     if (ammo = "5.56") {
         a556.SetFont("c22c55e")
         a556Top.Opt("Background22c55e")
@@ -962,7 +943,7 @@ SetAmmo(ammo) {
         aBombaTop.Opt("Background818cf8")
         aBombaTop.Redraw()
     }
-    
+
     UpdateRecoilDisplay()
 }
 
@@ -1000,7 +981,7 @@ UpdateRecoilDisplay() {
     val := recoilValues[activeAmmo]
     recoilLabel.SetFont(colorMap[activeAmmo])
     recoilLabel.Value := activeAmmo
-    recoilNum.SetFont("s14 w800 " . colorMap[activeAmmo])
+    recoilNum.SetFont("s22 w900 " . colorMap[activeAmmo])
     recoilNum.Value := val
     barW := Round(val * 264 / 100)
     progressBar.Opt("w" . barW . " Background" . barColor[activeAmmo])
@@ -1052,13 +1033,9 @@ DoToggleMacro() {
 
 UpdateStatus() {
     global macroOn, statusDot, statusText, hudStatus, hudAccentBar
-    if IsObject(statusDot) {
-        statusDot.Opt("Background" . (macroOn ? "0a1a0a" : "1a0a0a"))
-    }
     if IsObject(statusText) {
         statusText.SetFont(macroOn ? "s8 w700 c22c55e" : "s8 w700 cef4444")
-        statusText.Value := macroOn ? "● Aktif" : "● Pasif"
-        statusText.Opt("Background" . (macroOn ? "0a1a0a" : "1a0a0a"))
+        statusText.Value := macroOn ? "● AKTİF" : "● PASİF"
     }
     if IsObject(hudStatus) {
         hudStatus.SetFont(macroOn ? "s6 w700 c00ff88" : "s6 w700 cff3355")
@@ -1225,6 +1202,19 @@ UptimeTick() {
     secs := Mod(uptimeSeconds, 60)
     if IsObject(uptimeLabel)
         uptimeLabel.Value := Format("{:02d}:{:02d}", mins, secs)
+}
+
+StatusDotBlink() {
+    global statusText, macroOn
+    static blinkState := true
+    if !IsObject(statusText)
+        return
+    blinkState := !blinkState
+    if (macroOn) {
+        statusText.SetFont("s8 w700 c" . (blinkState ? "22c55e" : "0a3a1a"))
+    } else {
+        statusText.SetFont("s8 w700 c" . (blinkState ? "ef4444" : "3a0a0a"))
+    }
 }
 
 SysPulse() {
@@ -1739,9 +1729,15 @@ AssignBombaModeKey() {
 
     if (pressedKey = "Escape" || pressedKey = "") {
         bombaModeKey := ""
-        return
+    } else {
+        bombaModeKey := pressedKey
     }
-    bombaModeKey := pressedKey
+    ; settings.ini'ye kaydet
+    IniWrite(bombaModeKey, A_ScriptDir "\settings.ini", "Settings", "BombaModeKey")
+    try {
+        if IsObject(bombaModeKeyBtn)
+            bombaModeKeyBtn.Value := bombaModeKey = "" ? "YOK" : StrUpper(bombaModeKey)
+    }
 }
 
 DragWin(*) {
@@ -1749,81 +1745,109 @@ DragWin(*) {
 }
 
 OpenHudSettingsGui() {
-    global HUD, hudVisible, hudToggleBtn
+    global HUD, hudVisible, bombaModeKey
 
     HS := Gui("+AlwaysOnTop -Caption +ToolWindow +Owner" . A_ScriptHwnd, "")
-    HS.BackColor := "0e0e0e"
+    HS.BackColor := "111114"
     HS.MarginX := 0
     HS.MarginY := 0
 
-    ; Titlebar
-    HS.Add("Text", "x0 y0 w3 h36 Background4488ff")
-    HS.Add("Text", "x3 y0 w281 h36 Background0a0a0a")
-    HS.SetFont("s9 w700 c4488ff", "Consolas")
-    HS.Add("Text", "x12 y0 w240 h36 Background0a0a0a +0x200", "⚙ MİNİ HUD AYARLARI")
-    HS.Add("Text", "x284 y0 w1 h36 Background222222")
-    HS.SetFont("s12 w700 c555555", "Consolas")
-    hsClose := HS.Add("Text", "x285 y0 w35 h36 Background0a0a0a Center +0x200", "×")
+    ; Üst mor accent
+    HS.Add("Text", "x0 y0 w300 h3 Background6366f1")
+
+    ; Header
+    HS.Add("Text", "x0 y3 w300 h38 Background111114")
+    HS.SetFont("s10 w700 ce2e8f0", "Segoe UI")
+    HS.Add("Text", "x14 y10 w180 Background111114", "Diğer Ayarlar")
+    HS.SetFont("s9 cef4444", "Segoe UI")
+    hsClose := HS.Add("Text", "x268 y10 w24 h22 Background111114 Center +0x200", "✕")
     hsClose.OnEvent("Click", (*) => HS.Destroy())
-    HS.Add("Text", "x0 y36 w320 h1 Background222222")
+
+    ; Sürükleme
+    HS.Add("Text", "x0 y3 w260 h38 BackgroundTrans").OnEvent("Click", (*) => PostMessage(0xA1, 2, 0,, HS))
+
+    ; Ayırıcı
+    HS.Add("Text", "x0 y41 w300 h1 Background1a1a2e")
+
+    ; ── Mini HUD bölümü ──
+    HS.Add("Text", "x0 y42 w300 h28 Background0d0d14")
+    HS.SetFont("s8 w700 c475569", "Segoe UI")
+    HS.Add("Text", "x14 y50 w120 Background0d0d14", "MİNİ HUD")
 
     ; HUD Aç/Kapat
-    HS.SetFont("s8 w600 cFFFFFF", "Consolas")
-    HS.Add("Text", "x10 y46 w140 Background0e0e0e", "HUD Durumu")
-    HS.SetFont("s8 w700 c00ff88", "Consolas")
-    hsToggle := HS.Add("Text", "x160 y44 w140 h22 Background001a0a Center +0x200", hudVisible ? "AÇIK" : "KAPALI")
-    hsToggle.SetFont(hudVisible ? "s8 w700 c00ff88" : "s8 w700 cff3355")
-    hsToggle.Opt("Background" . (hudVisible ? "001a0a" : "1a0008"))
-    hsToggle.OnEvent("Click", (*) => (ToggleHUD(), hsToggle.Value := hudVisible ? "AÇIK" : "KAPALI", hsToggle.SetFont(hudVisible ? "s8 w700 c00ff88" : "s8 w700 cff3355"), hsToggle.Opt("Background" . (hudVisible ? "001a0a" : "1a0008"))))
+    HS.Add("Text", "x14 y74 w3 h32 Background22c55e")
+    HS.Add("Text", "x17 y74 w269 h32 Background161620")
+    HS.SetFont("s9 w600 ce2e8f0", "Segoe UI")
+    HS.Add("Text", "x26 y79 w100 Background161620", "HUD Görünürlük")
+    HS.SetFont("s8 w700 c22c55e", "Segoe UI")
+    hsToggle := HS.Add("Text", "x196 y80 w84 h20 Background081a08 Center +0x200", hudVisible ? "AÇIK" : "KAPALI")
+    hsToggle.SetFont(hudVisible ? "s8 w700 c22c55e" : "s8 w700 cef4444")
+    hsToggle.Opt("Background" . (hudVisible ? "081a08" : "1a0808"))
+    hsToggle.OnEvent("Click", (*) => (ToggleHUD(), hsToggle.Value := hudVisible ? "AÇIK" : "KAPALI", hsToggle.SetFont(hudVisible ? "s8 w700 c22c55e" : "s8 w700 cef4444"), hsToggle.Opt("Background" . (hudVisible ? "081a08" : "1a0808"))))
 
-    HS.Add("Text", "x0 y68 w320 h1 Background222222")
-
-    ; Konum — yön tuşları
-    HS.SetFont("s8 w600 cFFFFFF", "Consolas")
-    HS.Add("Text", "x10 y76 w140 Background0e0e0e", "Konum")
-    HS.SetFont("s9 w700 cFFFFFF", "Consolas")
-    hsBtnUp    := HS.Add("Text", "x160 y72 w30 h26 Background1a1a1a Center +0x200", "▲")
-    hsBtnLeft  := HS.Add("Text", "x160 y100 w30 h26 Background1a1a1a Center +0x200", "◄")
-    hsBtnDown  := HS.Add("Text", "x192 y100 w30 h26 Background1a1a1a Center +0x200", "▼")
-    hsBtnRight := HS.Add("Text", "x224 y100 w30 h26 Background1a1a1a Center +0x200", "►")
-    HS.SetFont("s7 c333333", "Consolas")
-    global hudPosLabel := HS.Add("Text", "x192 y76 w120 Background0e0e0e", "")
+    ; Konum
+    HS.Add("Text", "x14 y110 w3 h32 Background6366f1")
+    HS.Add("Text", "x17 y110 w269 h32 Background161620")
+    HS.SetFont("s9 w600 ce2e8f0", "Segoe UI")
+    HS.Add("Text", "x26 y119 w80 Background161620", "Konum")
+    HS.SetFont("s9 w700 ce2e8f0", "Segoe UI")
+    hsBtnUp    := HS.Add("Text", "x160 y113 w24 h24 Background1a1a2e Center +0x200", "▲")
+    hsBtnLeft  := HS.Add("Text", "x186 y113 w24 h24 Background1a1a2e Center +0x200", "◄")
+    hsBtnDown  := HS.Add("Text", "x212 y113 w24 h24 Background1a1a2e Center +0x200", "▼")
+    hsBtnRight := HS.Add("Text", "x238 y113 w24 h24 Background1a1a2e Center +0x200", "►")
     hsBtnUp.OnEvent("Click",    (*) => (MoveHUD(0,-10), UpdateHudPosLabel()))
     hsBtnLeft.OnEvent("Click",  (*) => (MoveHUD(-10,0), UpdateHudPosLabel()))
     hsBtnDown.OnEvent("Click",  (*) => (MoveHUD(0,10),  UpdateHudPosLabel()))
     hsBtnRight.OnEvent("Click", (*) => (MoveHUD(10,0),  UpdateHudPosLabel()))
-    UpdateHudPosLabel()
 
-    HS.Add("Text", "x0 y130 w320 h1 Background222222")
-
-    ; Monitör seçici
-    HS.SetFont("s8 w600 cFFFFFF", "Consolas")
-    HS.Add("Text", "x10 y138 w140 Background0e0e0e", "Monitör")
-    HS.SetFont("s8 w700 c4488ff", "Consolas")
-    global hudMonBtn := HS.Add("Text", "x160 y136 w140 h22 Background001020 Center +0x200", "MON 1")
+    ; Monitör
+    HS.Add("Text", "x14 y146 w3 h32 Background4488ff")
+    HS.Add("Text", "x17 y146 w269 h32 Background161620")
+    HS.SetFont("s9 w600 ce2e8f0", "Segoe UI")
+    HS.Add("Text", "x26 y155 w80 Background161620", "Monitör")
+    HS.SetFont("s8 w700 c4488ff", "Segoe UI")
+    global hudMonBtn := HS.Add("Text", "x196 y152 w84 h20 Background08081a Center +0x200", "MON 1")
     hudMonBtn.OnEvent("Click", (*) => CycleHudMonitor())
 
-    HS.Add("Text", "x0 y162 w320 h1 Background222222")
+    ; Ayırıcı
+    HS.Add("Text", "x0 y182 w300 h1 Background1a1a2e")
 
-    ; Bomba Modu tuşu
-    HS.SetFont("s8 w700 c818cf8", "Consolas")
-    HS.Add("Text", "x10 y170 w300 h16 Background0e0e0e", "⬡ BOMBA MODU")
-    HS.Add("Text", "x0 y188 w320 h1 Background222222")
-    HS.SetFont("s8 w600 cFFFFFF", "Consolas")
-    HS.Add("Text", "x10 y196 w140 Background0e0e0e", "Aktif tuşu")
-    HS.SetFont("s7 c555555", "Consolas")
-    HS.Add("Text", "x10 y210 w140 Background0e0e0e", "Basılıyken BOMBA modu aktif")
-    HS.SetFont("s8 w700 c818cf8", "Consolas")
-    global bombaModeKeyBtn := HS.Add("Text", "x160 y194 w140 h22 Background141414 Center +0x200", bombaModeKey = "" ? "YOK" : StrUpper(bombaModeKey))
-    bombaModeKeyBtn.OnEvent("Click", (*) => (AssignBombaModeKey(), bombaModeKeyBtn.Value := bombaModeKey = "" ? "YOK" : StrUpper(bombaModeKey)))
+    ; ── Bomba Modu bölümü ──
+    HS.Add("Text", "x0 y183 w300 h28 Background0d0d14")
+    HS.SetFont("s8 w700 c475569", "Segoe UI")
+    HS.Add("Text", "x14 y191 w120 Background0d0d14", "BOMBA MODU")
 
-    HS.Add("Text", "x0 y220 w320 h1 Background222222")
+    ; Aktif tuşu
+    HS.Add("Text", "x14 y215 w3 h32 Backgrounda855f7")
+    HS.Add("Text", "x17 y215 w269 h32 Background161620")
+    HS.SetFont("s9 w600 ce2e8f0", "Segoe UI")
+    HS.Add("Text", "x26 y220 w140 Background161620", "Aktif tuşu")
+    HS.SetFont("s7 c475569", "Segoe UI")
+    HS.Add("Text", "x26 y232 w140 Background161620", "Basılıyken BOMBA modu")
+    HS.SetFont("s8 w700 ca855f7", "Segoe UI")
+    global bombaModeKeyBtn := HS.Add("Text", "x196 y221 w84 h20 Background150818 Center +0x200", bombaModeKey = "" ? "YOK" : StrUpper(bombaModeKey))
+    bombaModeKeyBtn.OnEvent("Click", (*) => (AssignBombaModeKey(), IsObject(bombaModeKeyBtn) ? bombaModeKeyBtn.Value := bombaModeKey = "" ? "YOK" : StrUpper(bombaModeKey) : ""))
+
+    HS.Add("Text", "x0 y251 w300 h1 Background1a1a2e")
 
     screenW := SysGet(0)
     screenH := SysGet(1)
-    HS.Show("w320 h222 x" (screenW-320)//2 " y" (screenH-222)//2)
+    ; GUI'nin sağ tarafında aç
+    try {
+        WinGetPos(&gx, &gy, &gw,,, "ahk_id " G.Hwnd)
+    } catch {
+        gx := (screenW - 300) // 2
+        gy := (screenH - 252) // 2
+        gw := 0
+    }
+    hsX := gx + gw + 8
+    if (hsX + 300 > screenW)
+        hsX := gx - 308
+    if (hsX < 0)
+        hsX := (screenW - 300) // 2
+    HS.Show("w300 h252 x" hsX " y" gy)
     DllCall("dwmapi\DwmSetWindowAttribute", "ptr", HS.Hwnd, "uint", 33, "int*", 2, "uint", 4)
-    DllCall("dwmapi\DwmSetWindowAttribute", "ptr", HS.Hwnd, "uint", 34, "int*", 0x0e0e0e, "uint", 4)
+    DllCall("dwmapi\DwmSetWindowAttribute", "ptr", HS.Hwnd, "uint", 34, "int*", 0x111114, "uint", 4)
 }
 
 UpdateHudPosLabel() {
