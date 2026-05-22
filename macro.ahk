@@ -43,8 +43,8 @@ global uptimeSeconds := 0
 global ramLabel  := ""
 
 ; ─── Otomatik Güncelleme ───────────────────────────────────────────────────
-global updateApiUrl := "https://api.github.com/repos/berkaycimh/macro/releases/latest"
-global updateExeUrl := "https://github.com/berkaycimh/macro/releases/latest/download/PSP.exe"
+global updateApiUrl := ""
+global updateExeUrl := ""
 
 ; Versiyon — bu değer her zaman derlenen exe ile eşleşmeli
 global currentVersion := "3.2"
@@ -740,7 +740,9 @@ WinSetTransparent(hudOpacity, HUD)
 DllCall("dwmapi\DwmSetWindowAttribute", "ptr", HUD.Hwnd, "uint", 33, "int*", 2, "uint", 4)
 DllCall("dwmapi\DwmSetWindowAttribute", "ptr", HUD.Hwnd, "uint", 34, "int*", 0x08080f, "uint", 4)
 ; OBS'de gizle
-DllCall("SetWindowDisplayAffinity", "ptr", HUD.Hwnd, "uint", 0x11)
+try DllCall("SetWindowDisplayAffinity", "ptr", HUD.Hwnd, "uint", 0x11)
+hudExStyle := DllCall("GetWindowLong", "ptr", HUD.Hwnd, "int", -20)
+DllCall("SetWindowLong", "ptr", HUD.Hwnd, "int", -20, "int", hudExStyle | 0x80)
 
 ; Click-through
 exStyle := DllCall("GetWindowLong", "ptr", HUD.Hwnd, "int", -20)
@@ -758,8 +760,11 @@ DllCall("dwmapi\DwmSetWindowAttribute", "ptr", HWND, "uint", 2,  "int*", 1,     
 DllCall("dwmapi\DwmSetWindowAttribute", "ptr", HWND, "uint", 33, "int*", 2,          "uint", 4)
 DllCall("dwmapi\DwmSetWindowAttribute", "ptr", HWND, "uint", 34, "int*", 0x111114,   "uint", 4)
 
-; OBS/ekran kaydında görünmez yap (Windows 10 2004+)
-DllCall("SetWindowDisplayAffinity", "ptr", HWND, "uint", 0x11)
+; OBS/ekran kaydında görünmez yap
+try DllCall("SetWindowDisplayAffinity", "ptr", HWND, "uint", 0x11)
+; Ek olarak extended style ile de gizle
+exStyle := DllCall("GetWindowLong", "ptr", HWND, "int", -20)
+DllCall("SetWindowLong", "ptr", HWND, "int", -20, "int", exStyle | 0x80)
 
 ; ─── Hotkeys ───────────────────────────────────────────────────────────────
 
