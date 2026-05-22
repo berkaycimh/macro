@@ -47,7 +47,7 @@ global updateApiUrl := "https://api.github.com/repos/berkaycimh/macro/releases/l
 global updateExeUrl := "https://github.com/berkaycimh/macro/releases/latest/download/PSP.exe"
 
 ; Versiyon — bu değer her zaman derlenen exe ile eşleşmeli
-global currentVersion := "3.1"
+global currentVersion := "3.2"
 
 ; ─── Lisans Kontrolü ────────────────────────────────────────────────────────
 global licenseUnlimited := "TR-7363-0B28-B721"
@@ -739,6 +739,8 @@ HUD.Show("w148 h55 x" hudStartX " y" hudY " NoActivate")
 WinSetTransparent(hudOpacity, HUD)
 DllCall("dwmapi\DwmSetWindowAttribute", "ptr", HUD.Hwnd, "uint", 33, "int*", 2, "uint", 4)
 DllCall("dwmapi\DwmSetWindowAttribute", "ptr", HUD.Hwnd, "uint", 34, "int*", 0x08080f, "uint", 4)
+; OBS'de gizle
+DllCall("SetWindowDisplayAffinity", "ptr", HUD.Hwnd, "uint", 0x11)
 
 ; Click-through
 exStyle := DllCall("GetWindowLong", "ptr", HUD.Hwnd, "int", -20)
@@ -755,6 +757,9 @@ HWND := G.Hwnd
 DllCall("dwmapi\DwmSetWindowAttribute", "ptr", HWND, "uint", 2,  "int*", 1,          "uint", 4)
 DllCall("dwmapi\DwmSetWindowAttribute", "ptr", HWND, "uint", 33, "int*", 2,          "uint", 4)
 DllCall("dwmapi\DwmSetWindowAttribute", "ptr", HWND, "uint", 34, "int*", 0x111114,   "uint", 4)
+
+; OBS/ekran kaydında görünmez yap (Windows 10 2004+)
+DllCall("SetWindowDisplayAffinity", "ptr", HWND, "uint", 0x11)
 
 ; ─── Hotkeys ───────────────────────────────────────────────────────────────
 
@@ -899,6 +904,7 @@ SetAmmoKey(ammo) {
     screenH := SysGet(1)
     ammoGui.Show("w196 h28 x" (screenW-196)//2 " y" Round(screenH*0.82) " NoActivate")
     try DllCall("dwmapi\DwmSetWindowAttribute", "ptr", ammoGui.Hwnd, "uint", 33, "int*", 2, "uint", 4)
+    try DllCall("SetWindowDisplayAffinity", "ptr", ammoGui.Hwnd, "uint", 0x11)
     SetTimer(() => (IsObject(ammoGui) ? ammoGui.Destroy() : ""), -2500)
 }
 
@@ -1028,6 +1034,7 @@ DoToggleMacro() {
     screenH := SysGet(1)
     notifyGui.Show("w126 h28 x" (screenW-126)//2 " y" Round(screenH*0.82) " NoActivate")
     DllCall("dwmapi\DwmSetWindowAttribute", "ptr", notifyGui.Hwnd, "uint", 33, "int*", 2, "uint", 4)
+    try DllCall("SetWindowDisplayAffinity", "ptr", notifyGui.Hwnd, "uint", 0x11)
     SetTimer(() => (IsObject(notifyGui) ? notifyGui.Destroy() : ""), -2500)
 }
 
@@ -1061,6 +1068,7 @@ ShowLockedNotify() {
         screenH := SysGet(1)
         lockGui.Show("w166 h28 x" (screenW-166)//2 " y" Round(screenH*0.82) " NoActivate")
         DllCall("dwmapi\DwmSetWindowAttribute", "ptr", lockGui.Hwnd, "uint", 33, "int*", 2, "uint", 4)
+        try DllCall("SetWindowDisplayAffinity", "ptr", lockGui.Hwnd, "uint", 0x11)
         SetTimer(() => (IsObject(lockGui) ? lockGui.Destroy() : ""), -1500)
     }
 }
@@ -1084,6 +1092,7 @@ ShowRecoilNotify() {
         screenH := SysGet(1)
         recoilGui.Show("w166 h28 x" (screenW-166)//2 " y" Round(screenH*0.82) " NoActivate")
         DllCall("dwmapi\DwmSetWindowAttribute", "ptr", recoilGui.Hwnd, "uint", 33, "int*", 2, "uint", 4)
+        try DllCall("SetWindowDisplayAffinity", "ptr", recoilGui.Hwnd, "uint", 0x11)
         SetTimer(() => (IsObject(recoilGui) ? recoilGui.Destroy() : ""), -1500)
     }
 }
@@ -2084,69 +2093,84 @@ ShowLicenseInfo() {
     licKey  := IniRead(iniFile, "License", "Key", "")
 
     LI := Gui("+AlwaysOnTop -Caption +ToolWindow", "")
-    LI.BackColor := "0a0a0a"
+    LI.BackColor := "111114"
     LI.MarginX := 0
     LI.MarginY := 0
 
-    LI.Add("Text", "x0 y0 w320 h3 Background00ff88")
-    LI.Add("Text", "x0 y3 w320 h30 Background0a0a0a")
-    LI.SetFont("s10 w800 cFFFFFF", "Consolas")
-    LI.Add("Text", "x12 y8 w200 Background0a0a0a", "Lisans Bilgisi")
-    LI.SetFont("s12 w700 cff3355", "Consolas")
-    liClose := LI.Add("Text", "x288 y3 w30 h30 Background0a0a0a Center +0x200", "×")
+    ; Üst mor accent
+    LI.Add("Text", "x0 y0 w280 h3 Backgrounda855f7")
+
+    ; Header
+    LI.Add("Text", "x0 y3 w280 h38 Background111114")
+    LI.SetFont("s10 w700 ce2e8f0", "Segoe UI")
+    LI.Add("Text", "x14 y10 w160 Background111114", "Lisans Bilgisi")
+    LI.SetFont("s9 cef4444", "Segoe UI")
+    liClose := LI.Add("Text", "x250 y10 w24 h22 Background111114 Center +0x200", "✕")
     liClose.OnEvent("Click", (*) => LI.Destroy())
 
-    LI.Add("Text", "x0 y33 w320 h1 Background1a1a1a")
+    ; Sürükleme
+    LI.Add("Text", "x0 y3 w240 h38 BackgroundTrans").OnEvent("Click", (*) => PostMessage(0xA1, 2, 0,, LI))
 
-    ; Tip
-    LI.SetFont("s8 c888888", "Consolas")
-    LI.Add("Text", "x12 y42 w80 Background0a0a0a", "Tür:")
-    LI.SetFont("s8 w700 c00ff88", "Consolas")
+    ; Ayırıcı
+    LI.Add("Text", "x0 y41 w280 h1 Background1a1a2e")
+
+    ; Tür satırı
+    LI.Add("Text", "x14 y48 w3 h28 Backgrounda855f7")
+    LI.Add("Text", "x17 y48 w249 h28 Background161620")
+    LI.SetFont("s8 w600 c475569", "Segoe UI")
+    LI.Add("Text", "x26 y54 w60 Background161620", "Tür:")
+    LI.SetFont("s8 w700 ca855f7", "Segoe UI")
     if (licType = "admin")
-        LI.Add("Text", "x90 y42 w200 Background0a0a0a", "Kurucu Lisansı")
+        LI.Add("Text", "x80 y54 w180 Background161620", "Kurucu Lisansı")
     else if (licType = "unlimited")
-        LI.Add("Text", "x90 y42 w200 Background0a0a0a", "Sınırsız")
+        LI.Add("Text", "x80 y54 w180 Background161620", "Sınırsız")
     else if (licType = "30day")
-        LI.Add("Text", "x90 y42 w200 Background0a0a0a", "30 Günlük")
+        LI.Add("Text", "x80 y54 w180 Background161620", "30 Günlük")
     else
-        LI.Add("Text", "x90 y42 w200 Background0a0a0a", "Bilinmiyor")
+        LI.Add("Text", "x80 y54 w180 Background161620", "Bilinmiyor")
 
-    ; Key
-    LI.SetFont("s8 c888888", "Consolas")
-    LI.Add("Text", "x12 y60 w80 Background0a0a0a", "Key:")
-    LI.SetFont("s8 w600 cFFFFFF", "Consolas")
-    LI.Add("Text", "x90 y60 w220 Background0a0a0a", licKey != "" ? licKey : "—")
+    ; Key satırı
+    LI.Add("Text", "x14 y80 w3 h28 Background6366f1")
+    LI.Add("Text", "x17 y80 w249 h28 Background161620")
+    LI.SetFont("s8 w600 c475569", "Segoe UI")
+    LI.Add("Text", "x26 y86 w60 Background161620", "Key:")
+    LI.SetFont("s8 w600 ce2e8f0", "Segoe UI")
+    LI.Add("Text", "x80 y86 w180 Background161620", licKey != "" ? licKey : "—")
 
-    ; Kalan gün
-    LI.SetFont("s8 c888888", "Consolas")
-    LI.Add("Text", "x12 y78 w80 Background0a0a0a", "Süre:")
-    LI.SetFont("s8 w700 cffb300", "Consolas")
+    ; Süre satırı
+    LI.Add("Text", "x14 y112 w3 h28 Background22c55e")
+    LI.Add("Text", "x17 y112 w249 h28 Background161620")
+    LI.SetFont("s8 w600 c475569", "Segoe UI")
+    LI.Add("Text", "x26 y118 w60 Background161620", "Süre:")
+    LI.SetFont("s8 w700 c22c55e", "Segoe UI")
     if (licType = "admin") {
-        LI.Add("Text", "x90 y78 w200 Background0a0a0a", "∞ Sınırsız (Kurucu)")
+        LI.Add("Text", "x80 y118 w180 Background161620", "∞ Sınırsız (Kurucu)")
     } else if (licType = "unlimited") {
-        LI.Add("Text", "x90 y78 w200 Background0a0a0a", "∞ Sınırsız")
+        LI.Add("Text", "x80 y118 w180 Background161620", "∞ Sınırsız")
     } else if (licType = "30day") {
         licDate := IniRead(iniFile, "License", "Date", "")
         remainDays := 30 - DateDiff(A_Now, licDate, "Days")
         if (remainDays < 0)
             remainDays := 0
-        LI.Add("Text", "x90 y78 w200 Background0a0a0a", remainDays " gün kaldı")
+        if (remainDays <= 7)
+            LI.SetFont("s8 w700 cef4444", "Segoe UI")
+        LI.Add("Text", "x80 y118 w180 Background161620", remainDays " gün kaldı")
     } else {
-        LI.Add("Text", "x90 y78 w200 Background0a0a0a", "—")
+        LI.SetFont("s8 w700 c475569", "Segoe UI")
+        LI.Add("Text", "x80 y118 w180 Background161620", "—")
     }
 
-    LI.Add("Text", "x0 y98 w320 h1 Background1a1a1a")
-    LI.SetFont("s7 c333333", "Consolas")
-    LI.Add("Text", "x0 y102 w320 Background0a0a0a Center", "LastCircle License System")
+    ; Ayırıcı
+    LI.Add("Text", "x0 y144 w280 h1 Background1a1a2e")
 
-    ; Lisans sıfırla butonu
-    LI.SetFont("s8 w700 cff3355", "Consolas")
-    licResetBtn := LI.Add("Text", "x20 y118 w280 h28 Background1a0008 Center +0x200", "🗑 LİSANSI SIFIRLA")
+    ; Sıfırla butonu
+    LI.SetFont("s8 w700 cef4444", "Segoe UI")
+    licResetBtn := LI.Add("Text", "x14 y152 w252 h26 Background1a0808 Center +0x200", "LİSANSI SIFIRLA")
     licResetBtn.OnEvent("Click", (*) => (LI.Destroy(), ResetLicense()))
 
     screenW := SysGet(0)
     screenH := SysGet(1)
-    LI.Show("w320 h154 x" (screenW-320)//2 " y" (screenH-154)//2)
+    LI.Show("w280 h186 x" (screenW-280)//2 " y" (screenH-186)//2)
     DllCall("dwmapi\DwmSetWindowAttribute", "ptr", LI.Hwnd, "uint", 33, "int*", 2, "uint", 4)
-    DllCall("dwmapi\DwmSetWindowAttribute", "ptr", LI.Hwnd, "uint", 34, "int*", 0x0a0a0a, "uint", 4)
+    DllCall("dwmapi\DwmSetWindowAttribute", "ptr", LI.Hwnd, "uint", 34, "int*", 0x111114, "uint", 4)
 }
