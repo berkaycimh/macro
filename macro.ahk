@@ -47,7 +47,7 @@ global updateApiUrl := ""
 global updateExeUrl := ""
 
 ; Versiyon — bu değer her zaman derlenen exe ile eşleşmeli
-global currentVersion := "3.2"
+global currentVersion := "3.3"
 
 ; ─── Lisans Kontrolü ────────────────────────────────────────────────────────
 global licenseUnlimited := "TR-7363-0B28-B721"
